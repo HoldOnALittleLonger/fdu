@@ -1,0 +1,78 @@
+								Project<fdu>
+
+Description:
+    an application follow C/S model to download or upload file.
+
+Design reason:
+    nothing.just i want.
+
+Structure:
+   class f_server;        //  server class,it listen on a port wait client
+   class f_client;	  //  client class,it connect to server
+   
+   class fdownload;	  //  if a fdownload class is existed,it must be associated with a fupload class.
+   class fupload;	  //  if a fupload class is existed,ist must be associated with a fdownload class.
+
+   class fops;		  //  file operation APIs
+   class nops;		  //  network operation APIs
+
+   f_server->primitives
+     setListenAddressIPv4
+     setListenPort
+     setMaximumLinks
+     bind
+     listen
+     accept
+
+   f_client->primitives
+     setPeerAddressIPv4
+     setPeerPort
+     connect
+     
+   fdownload->primitives
+     setDownloadPath
+     setFileName
+     getFile
+
+   fupload->primitives
+     readRequest
+     checkFile
+     sendFile
+
+   fops->primitives
+     general file operations
+
+   nops->primitives
+     general network operations
+
+   struct request_header {
+     char *file_path;
+     size_t fp_len;
+   };
+
+   struct responding_header {
+     size_t file_length;
+     int state;
+   }
+
+Logic order:
+    fdu should has two modes,one is client,another is server.
+    how it work is determined by APIs called.
+    
+Feature design:
+	<Modularity to interfaces could up the extendable attribute.Of course,it als helpful while you debuging.>
+
+Develop environment:
+    g++ 10.3.0
+    glibc 2.17
+    Linux 3.10
+
+Debug or Other:
+	TODO:
+	<Debug and TODO.All programs are not probably no bugs.And they are also have the space to optimize.>
+
+Complement:
+	<There could place some messages as additional.Addition could explain the project in the further gradation.>
+
+Version:
+	<Version of it>
