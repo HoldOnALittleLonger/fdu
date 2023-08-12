@@ -110,6 +110,11 @@ export module NOPS;
 
 export class nops {
 public:
+  virtual int socket(int domain, int type, int protocol)
+  {
+    return ::socket(domain, type, protocol);
+  }
+
   virtual int bind(int socket, struct sockaddr *addr, socklen_t addrlen)
   {
     return ::bind(socket, addr, addrlen);
@@ -160,5 +165,22 @@ public:
     return ::inet_ntoa(in);
   }
 
-}
+};
+
+module;
+
+#define FP_LENGTH 256
+
+export module REQUEST_RESPODING;
+
+export request_header {
+  char file_path[FP_LENGTH];
+};
+
+export respoding_header {
+  std::size_t file_length;
+  int state;
+};
+
+
 

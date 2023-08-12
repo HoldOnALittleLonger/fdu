@@ -28,16 +28,19 @@ Structure:
      setPeerAddressIPv4
      setPeerPort
      connect
+     getCurrentLinkType
      
    fdownload->primitives
      setDownloadPath
      setFileName
      getFile
+     setDownloadBufferSize
 
    fupload->primitives
      readRequest
      checkFile
      sendFile
+     setUploadBufferSize
 
    fops->primitives
      general file operations
