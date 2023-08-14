@@ -1,27 +1,52 @@
 module;
 
 export module F_CLIENT;
-import FOPS;
-import NOPS;
+import GENERAL_API;
+import GENERIC_IPV4_TCP;
 
 import <cstddef>
 import <cstdlib>
+import <cstring>
 
-export class f_client final : private fops, private nops {
+export class f_client final : private general_api {
  public:
 
-  class fdownload final : private fops, private nops {
+  enum F_CLIENT_ERROR {
+    F_CLIENT_ERR_CONSTRUCT = 1,
+    F_CLIENT_ERR_SOCKET,
+    F_CLIENT_ERR_CONNECT
+  };
+  using f_client_err = F_CLIENT_ERROR;
+
+  class fdownload final : private general_api {
   public:
-    explicit fdownload(int sockfd) : _socket(sockfd)
+    
+    enum FDOWNLOAD_ERROR {
+      FDOWNLOAD_ERR_CONSTRUCT = 1
+      FDOWNLOAD_ERR_MEMORY,
+      FDOWNLOAD_ERR_COPY,
+      FDOWNLOAD_ERR_RESPOND,
+      FDOWNLOAD_ERR_FILE
+    };
+    using fdown_err = FDOWNLOAD_ERROR;
+
+    explicit fdownload(int sockfd) noexcept(false) : _socket(sockfd)
     {
+      _filename = new std::string;
       _directory = new std::string;
       _dentry = new std::string;
+      _db_size = 4096;
+      _download_buffer = new char[_db_size];
+      if (!_filename || !_directory || !_dentry || !_download_buffer)
+	throw FDOWNLOAD_ERR_CONSTRUCT;
     }
     ~fdownload()
       {
 	shutdown(sockfd, SHUT_RDWR);
+	delete _filename;
 	delete _directory;
 	delete _dentry;
+	delete[] _download_buffer;
       }
 
     int getFile(void);
@@ -56,13 +81,34 @@ export class f_client final : private fops, private nops {
       *_directory = download_path;
     }
 
+    void setDownloadBufferSize(std::size_t n) noexcept(false)
+    {
+      if (n == _db_size)  //  if n == _db_size,do nothing.
+	return;
+
+      auto n(_db_size);
+      decltype(_download_buffer) temp = new char[n];  //  read-copy-update
+      if (!temp)
+	throw FDOWNLOAD_ERR_MEMORY;
+      _db_size = n;
+      if (_download_buffer)
+	delete[] _download_buffer;
+      _download_buffer = temp;
+    }
+
     
-    fdownload(const fdownload &robj)
+    fdownload(const fdownload &robj) noexcept(false)
       {
 	_socket = robj._socket;
 	*_filename = *robj._filename;
 	*_directory = *robj._directory;
 	*_dentry = *robj._dentry;
+	try {
+	  setDownloadBufferSize(robj._db_size);
+	} catch (fdownload_err x) {
+	  throw FDOWNLOAD_ERR_COPY;
+	}
+	memcpy(_download_buffer, robj._download_buffer, _db_size);
       }
 
     fdownload(fdownload &&robj)
@@ -71,10 +117,15 @@ export class f_client final : private fops, private nops {
 	_filename = robj._filename;
 	_directory = robj._directory;
 	_dentry = robj._dentry;
+	_db_size = robj._db_size;
+	_download_buffer = robj._download_buffer;
 
 	robj._socket = -1;
+	robj._filename = nullptr;
 	robj._directory = nullptr;
 	robj._dentry = nullptr;
+	robj._db_size = 0;
+	robj._download_buffer = nullptr;
       }
 
   private:
@@ -82,77 +133,87 @@ export class f_client final : private fops, private nops {
     std::string *_filename;
     std::string *_directory;
     std::string *_dentry;
+    std::size_t _db_size;
+    char *_download_buffer;
   };
 
-  enum FAMILY {
+  using fdownload_t = fdownload;
+
+  enum LinkType {
     IPV4 = 4,
     UNKNOWN = 173
   };
 
-  f_client()
+  f_client() noexcept(false)
     {
-      _ipv4_addr_str = new std::string;
-      _ipv4_addr = malloc(sizeof(struct sockaddr));
-      port = 0;
-      _currentLink = UNKNOWN;
+      try {
+	_gip4tcp = new generic_ipv4_tcp;
+      } catch (typename generic_ipv4_tcp::gip4tcp_err x) {
+	throw F_CLIENT_ERR_CONSTRUCT;
+      }
+      if (!_gip4tcp)
+	throw F_CLIENT_ERR_CONSTRUCT;
+      _linktype = UNKNOWN;
     }
   ~f_client()
     {
-      delete _ipv4_addr_str;
-      free(_ipv4_addr);
+      delete _gip4tcp;
     }
 
   bool setPeerAddressIPv4(const char *netaddr)
   {
-    struct sockaddr_in *ipv4_addr = static_cast<struct sockaddr_in *>(_ipv4_addr);
-    if (!inet_aton(netaddr, &ipv4_addr->sin_addr))
-      return false;
-    return true;
+    return _gip4tcp->setAddress(netaddr);
   }
 
   bool setPeerAddressIPv4(const std::string &netaddr)
   {
-    const char *cnetaddr = netaddr.c_str();
-    return set_ipv4_addr(cnetaddr);
+    return _gip4tcp->setAddress(netaddr);
   }
 
   void setPeerPort(unsigned long vport)
   {
-    _port = htonl(vport);
+    _gip4tcp->setPort(vport);
+    _linktype = IPV4;
   }
 
-  fdownload connect(void);
-
-  FAMILY getCurrentLinkType(void) const
+  auto getPeerAddressIPv4Str(void) const
   {
-    return _currentLink;
+    return _gip4tcp->getAddressStr();
   }
 
+  auto getPeerAddressIPv4(void) const
+  {
+    return _gip4tcp->getAddress();
+  }
+
+  auto getPeerPort(void) const
+  {
+    return _gip4tcp->getPort();
+  }
+
+  fdownload_t connect(int domain, int type, int protocol) noexcept(false);
+
+  LinkType getCurrentLinkType(void) const
+  {
+    return _linktype;
+  }
+
+  //  copy constructor
   f_client(const f_client &robj)
     {
-      _currentLink = robj._currentLink;
-      _port = robj._port;
-      *_ipv4_addr = *robj._ipv4_addr;
-      *_ipv4_addr_str = *robj._ipv4_addr_str;
+      *_gip4tcp = *robj._gip4tcp;
+      _linktype = robj._linktype;
     }
 
-  f_client(f_client &&robj)
+  //  move constructor
+  explicit f_client(f_client &&robj)
     {
-      _currentLink = robj._currentLink;
-      _port = robj._port;
-      _ipv4_addr = robj._ipv4_addr;
-      _ipv4_addr_str = robj._ipv4_addr_str;
-
-      robj._currentLink = UNKNOWN;
-      robj._port = 0;
-      robj._ipv4_addr = nullptr;
-      robj._ipv4_addr_str = nullptr;
+      _gip4tcp = robj._gip4tcp;
+      _linktype = robj._linktype;
+      robj._linktype = UNKNOWN;
     }
 
  private:
-  std::string *_ipv4_addr_str;
-  struct sockaddr *_ipv4_addr;
-  unsigned long _port;
-
-  FAMILY _currentLink;
+  generic_ipv4_tcp *_gip4tcp;
+  LinkType _linktype
 };
