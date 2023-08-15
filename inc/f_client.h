@@ -43,9 +43,6 @@ export class f_client final : private general_api {
     ~fdownload()
       {
 	shutdown(sockfd, SHUT_RDWR);
-	delete _filename;
-	delete _directory;
-	delete _dentry;
 	delete[] _download_buffer;
       }
 
@@ -87,15 +84,14 @@ export class f_client final : private general_api {
 	return;
 
       auto n(_db_size);
-      decltype(_download_buffer) temp = new char[n];  //  read-copy-update
+      char *temp = new char[n];
       if (!temp)
 	throw FDOWNLOAD_ERR_MEMORY;
-      _db_size = n;
       if (_download_buffer)
 	delete[] _download_buffer;
+      _db_size = n;
       _download_buffer = temp;
     }
-
     
     fdownload(const fdownload &robj) noexcept(false)
       {
@@ -130,9 +126,9 @@ export class f_client final : private general_api {
 
   private:
     int _socket;
-    std::string *_filename;
-    std::string *_directory;
-    std::string *_dentry;
+    std::unique_ptr<std::string> _filename;
+    std::unique_ptr<std::string> _directory;
+    std::unique_ptr<std::string> _dentry;
     std::size_t _db_size;
     char *_download_buffer;
   };
@@ -148,17 +144,12 @@ export class f_client final : private general_api {
     {
       try {
 	_gip4tcp = new generic_ipv4_tcp;
-      } catch (typename generic_ipv4_tcp::gip4tcp_err x) {
+      } catch (...) {
 	throw F_CLIENT_ERR_CONSTRUCT;
       }
-      if (!_gip4tcp)
-	throw F_CLIENT_ERR_CONSTRUCT;
       _linktype = UNKNOWN;
     }
-  ~f_client()
-    {
-      delete _gip4tcp;
-    }
+  ~f_client() {}
 
   bool setPeerAddressIPv4(const char *netaddr)
   {
@@ -214,6 +205,6 @@ export class f_client final : private general_api {
     }
 
  private:
-  generic_ipv4_tcp *_gip4tcp;
-  LinkType _linktype
+  std::unique_ptr<generic_ipv4_tcp> _gip4tcp;
+  LinkType _linktype;
 };

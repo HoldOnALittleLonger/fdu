@@ -7,6 +7,15 @@ export module FOPS;
 import <string>;
 import <fstream>;
 
+extern "C" {
+  int open(const char *, int);
+  ssize_t read(int, void *, size_t);
+  ssize_t write(int, const void *, size_t);
+  offset_t lseek(int, offset_t, int);
+  int close(int);
+  int stat(const char *, struct stat *);
+}
+
 export class fops {
 public:
   virtual int open(const char *path, int flags)
@@ -108,6 +117,19 @@ module;
 
 export module NOPS;
 
+extern "C" {
+  int socket(int, int, int);
+  int bind(int, struct sockaddr *, socklen_t);
+  int listen(int);
+  int accept(int, struct sockaddr *, socklen_t *);
+  int connect(int, const sockaddr *, socklen_t);
+  ssize_t send(int, const void *, size_t, int);
+  ssize_t recv(int, void *, size_t, int);
+  uint32_t htonl(uint32_t);
+  int inet_aton(const char *, struct in_addr *);
+  char *inet_ntoa(struct in_addr);
+}
+
 export class nops {
 public:
   virtual int socket(int domain, int type, int protocol)
@@ -130,7 +152,7 @@ public:
     return ::accept(socket, addr, addrlen);
   }
 
-  virtual int connect(int socket, struct sockaddr *addr, socklen_t addrlen)
+  virtual int connect(int socket, const struct sockaddr *addr, socklen_t addrlen)
   {
     return ::connect(socket, addr, addrlen);
   }
@@ -193,8 +215,17 @@ export respoding_header {
 };
 
 module;
+
+#include <cstdlib>
+
 export module GENERIC_IPV4_TCP;
 import GENERICAL_API;
+import <memory>
+
+extern "C" {
+  void *malloc(size_t);
+}
+
 export class generic_ipv4_tcp final : private generial_api {
  public:
   
@@ -206,16 +237,15 @@ export class generic_ipv4_tcp final : private generial_api {
   generic_ipv4_tcp() noexcept(false)
   {
     _port = 0;
-    _ipv4_addr = malloc(sizeof(struct sockaddr));
     _ipv4_addr_str = new std::string;
-    if (!_ipv4_addr || !_ipv4_addr_str)
+    _ipv4_addr = malloc(sizeof(struct sockaddr));
+    if (!_ipv4_addr)
       throw GIP4TCP_ERR_CONSTRUCT;
   }
 
   ~generic_ipv4_tcp()
   {
     free(_ipv4_addr);
-    delete _ipv4_addr_str;
   }
 
   bool setAddress(const std::string &netaddr)
@@ -253,24 +283,6 @@ export class generic_ipv4_tcp final : private generial_api {
     return _port;
   }
 
-  void __do_copy(const decltype(*this) &from)
-  {
-    *_ipv4_addr = *from._ipv4_addr;
-    *_ipv4_addr_str = *from._ipv4_addr_str;
-    _port = from._port;
-  }
-
-  void __do_move(decltype(*this) &&peer) noexcept
-  {
-    _ipv4_addr = peer._ipv4_addr;
-    _ipv4_addr_str = peer._ipv4_addr_str;
-    _port = peer._port;
-
-    peer._ipv4_addr = nullptr;
-    peer._ipv4_addr_str = nullptr;
-    peer._port = 0;
-  }
-
   generic_ipv4_tcp(const decltype(*this) &robj)
   {
     __do_copy(robj);
@@ -295,6 +307,125 @@ export class generic_ipv4_tcp final : private generial_api {
 
  private:
   struct sockaddr *_ipv4_addr;
-  std::string *_ipv4_addr_str;
+  std::unique_ptr<std::string> _ipv4_addr_str;
   unsigned long _port;  
+
+  void __do_copy(const decltype(*this) &from)
+  {
+    *_ipv4_addr = *from._ipv4_addr;
+    *_ipv4_addr_str = *from._ipv4_addr_str;
+    _port = from._port;
+  }
+
+  void __do_move(decltype(*this) &&from) noexcept
+  {
+    _ipv4_addr = from._ipv4_addr;
+    _ipv4_addr_str = from._ipv4_addr_str;
+    _port = from._port;
+
+    from._ipv4_addr = nullptr;
+    from._ipv4_addr_str = nullptr;
+    from._port = 0;
+  }
 };
+
+/*
+module;
+
+export module UNIQUE_ARRAY_PTR;
+
+export template<typename _Type>
+struct unique_array_ptr final {
+  unique_array_ptr() : _ptr(nullptr), _copy(0) {}
+  unique_array_ptr(_Type *array_ptr) : _ptr(array_ptr), _copy(0) {}
+  ~unique_array_ptr() { (!_copy) ? delete[] _ptr : 0; }
+
+  unique_array_ptr(const unique_array_ptr<_Type> &robj)  //  copy constructor
+    {
+      __set_ptr(robj._ptr);
+      _copy = 1;
+    }
+  unique_array_ptr<_Type> &operator=(const unique_array_ptr<_Type> &robj)  //  copy assignment
+    {
+      __set_ptr(robj._ptr);
+      _copy = 1;
+      return *this;
+    }
+  const unique_array_ptr<_Type> &operator=(_Type *pointer)  //  assignment
+    {
+      __set_ptr(pointer);
+      _copy = 0;
+      return *this;
+    }
+
+  unique_array_ptr(unique_array_ptr<_Type> &&robj)  //  move constructor
+    {
+      __set_ptr(robj._ptr);
+      _copy = 0;
+      robj._ptr = nullptr;
+      robj._copy = 1;
+    }
+
+  unique_array_ptr<_Type> &operator=(unique_array_ptr<_Type> &&robj)  //  move assignment
+    {
+      __set_ptr(robj._ptr);
+      _copy = 0;
+      robj._ptr = nullptr;
+      robj._copy = 1;
+      return *this;
+    }
+
+  _Type &operator*()  //  disreference
+  {
+    return *_ptr;
+  }
+
+  _Type &operator[](std::size_t index)  //  random accessing
+  {
+    return *(*this + index);
+  }
+
+  const unique_array_ptr<_Type>&operator+(int offset)
+  {
+    unique_array_ptr<_Type> temp(*this);
+    temp._ptr += offset;
+    return temp;
+  }
+  const unique_array_ptr<_Type>&operator-(int offset)
+  {
+    unique_array_ptr<_Type> temp(*this);
+    temp._ptr -= offset;
+    return temp;
+  }
+
+  //  type conversions
+  operator _Type*()
+  {
+    return _ptr;
+  }
+
+  operator void*()
+  {
+    return static_cast<void *>(_ptr);
+  }
+
+  operator bool()
+  {
+    return _ptr != nullptr;
+  }
+
+  //  disable increment and descrement
+
+ private:
+  _Type *_ptr;  //  array pointer
+  unsigned short _copy : 1;  //  ownership
+
+  void __set_ptr(_Type *pointer)  //  internal help function
+  {
+    if (_ptr && !_copy)
+      delete[] _ptr;
+    _ptr = pointer;
+  }
+};
+
+*/

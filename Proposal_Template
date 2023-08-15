@@ -21,9 +21,11 @@ Structure:
      setListenPort
      setMaximumLinks
      accept
+     getMaximumLinks
      getCurrentAddress
      getCurrentPort
      getCurrentLinkType
+     reset
 
    f_client->primitives
      setPeerAddressIPv4
