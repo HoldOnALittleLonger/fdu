@@ -4,9 +4,9 @@ export module F_CLIENT;
 import GENERAL_API;
 import GENERIC_IPV4_TCP;
 
-import <cstddef>
-import <cstdlib>
-import <cstring>
+import <cstddef>;
+import <cstdlib>;
+import <cstring>;
 
 export class f_client final : private general_api {
  public:
@@ -42,7 +42,8 @@ export class f_client final : private general_api {
     }
     ~fdownload()
       {
-	shutdown(sockfd, SHUT_RDWR);
+	//  destructor does not release socket,
+	//  client have to release it manually.
 	delete[] _download_buffer;
       }
 
@@ -66,6 +67,13 @@ export class f_client final : private general_api {
       std::size_t length(filename.end() - filename_with_slash);
       std::string the_file(filename.substr(displacement, length));
       *_dentry = *_directory + the_file;
+    }
+
+    //  maybe client needs this function to examine that
+    //  if the file is been existed.
+    std::string getFileName(void) const
+    {
+      return *_dentry;
     }
 
     void setDownloadPath(const char *download_path)
@@ -101,7 +109,7 @@ export class f_client final : private general_api {
 	*_dentry = *robj._dentry;
 	try {
 	  setDownloadBufferSize(robj._db_size);
-	} catch (fdownload_err x) {
+	} catch (fdownload_err &x) {
 	  throw FDOWNLOAD_ERR_COPY;
 	}
 	memcpy(_download_buffer, robj._download_buffer, _db_size);
@@ -123,6 +131,17 @@ export class f_client final : private general_api {
 	robj._db_size = 0;
 	robj._download_buffer = nullptr;
       }
+
+    bool operator bool()
+    {
+      return _socket >= 0;
+    }
+
+    void releaseLink(void)
+    {
+      shutdown(_socket, SHUT_RDWR);
+      _socket = -1;
+    }
 
   private:
     int _socket;

@@ -18,7 +18,9 @@ export class f_server final : private general_api {
     }
     ~fupload()
       {
-	shutdown(_communicateSocket, SHUT_RDWR);
+	//  client have to release socket manually,
+	//  if destructor release socket,then
+	//  can not return from server or client function(by the time,the socket had been closed)
 	delete[] _upload_buffer;
       }
 
@@ -27,7 +29,7 @@ export class f_server final : private general_api {
 	__doCopy(robj);
       }
 
-    fupload&operator=(const fupload &robj) noexcept(false)
+    fupload &operator=(const fupload &robj) noexcept(false)
       {
 	__doCopy(robj);
 	return *this;
@@ -38,11 +40,16 @@ export class f_server final : private general_api {
 	__doMove(robj);
       }
 
-    fupload&operator=(fupload &&robj) noexcept(false)
+    fupload &operator=(fupload &&robj) noexcept(false)
       {
 	__doMove(robj);
 	return *this;
       }
+
+    bool operator bool()
+    {
+      return _communicateSocket >= 0;
+    }
 
     void setUploadBufferSize(std::size_t n) noexcept(false)
     {
@@ -58,9 +65,16 @@ export class f_server final : private general_api {
       _ub_size = n;
     }
 
-    request_header readRequest(void);
+    //  of course,kernel would does for us,but
+    //  the time is program exited.
+    void releaseLink(void)
+    {
+      shutdown(_communicateSocket, SHUT_RDWR);
+    }
+
+    const request_header *readRequest(void);
     responding_header checkFile(const request_header &);
-    void sendFile(const responding_header &);
+    void sendFile(responding_header &, const request_header *);
 
   private:
     int _communicateSocket;
@@ -105,6 +119,8 @@ export class f_server final : private general_api {
 
   enum F_SERVER_ERROR {
     F_SERVER_ERR_CONSTRUCT = 1
+    F_SERVER_ERR_UNKNOWN_LINK,
+    F_SERVER_ERR_BIND
   };
   using f_server_err = F_SERVER_ERROR;
 
@@ -172,6 +188,23 @@ export class f_server final : private general_api {
   auto getCurrentPort(void) const
   {
     return _gip4tcp->getPort();
+  }
+
+  int init(void)
+  {
+    if (_type == UNKNOWN)
+      return F_SERVER_ERR_UNKNOWN_LINK;
+    else if (_type == IPV4) {
+      _listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+      if (_listenSocket < 0)
+	return F_SERVER_ERR_SOCKET;
+    }
+
+    auto addrObject(getCurrentAddress());  //  current server listen address
+    if (bind(_listenSocket, &addrObject, sizeof(addrObject)) < 0)
+      return F_SERVER_ERR_BIND;
+    listen(_listenSocket, _maximum_links);
+    return 0;
   }
 
   void reset(void)

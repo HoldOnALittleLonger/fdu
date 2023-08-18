@@ -14,6 +14,7 @@ extern "C" {
   offset_t lseek(int, offset_t, int);
   int close(int);
   int stat(const char *, struct stat *);
+  int fcntl(int, int, ...);
 }
 
 export class fops {
@@ -32,6 +33,22 @@ public:
     }
     delete f;
     return nullptr;
+  }
+
+  //  __basic_file is protected member in fstream
+  //  but fstream::rdbuf() could returns the object.
+  virtual int retriveFdForFstream(std::fstream &f)
+  {
+    auto retrive = [](std::filebuf &fb) -> int {
+      class helper : public std::filebuf {
+      public:
+	int handle(void) { return _M_file.fd(); }
+      };
+
+      return static_cast<helper&>(fb).handle();
+    };
+
+    return retrive(f.rdbuf());
   }
 
   virtual std::ssize_t read(int fd, char *buffer, std::size_t n)
@@ -105,6 +122,43 @@ public:
   virtual std::size_t getFileLength(const std::string &path)
   {
     return getFileLength(path.c_str);
+  }
+
+  void getRDFileLock(int fd)
+  {
+    getFileLock(fd, F_RDLCK);
+  }
+
+  void getWRFileLock(int fd)
+  {
+    getFileLock(fd, F_WRLCK);
+  }
+
+  //  locker always lock all 
+  void releaseFileLock(int fd)
+  {
+    struct flock lock = {
+      .l_type = F_UNLCK,
+      .l_whence = SEEK_SET,
+      .l_start = 0,
+      .l_len = 0
+    };
+    fcntl(fd, F_SETLKW, &lock);
+    return;
+  }
+
+private:
+  //  locker always lock all
+  void getFileLock(int fd, short type)
+  {
+    struct flock lock = {
+      .l_type = type,
+      .l_whence = SEEK_SET,
+      .l_start = 0,
+      .l_len = 0
+    };
+    fcntl(fd, F_SETLKW, &lock);
+    return;
   }
 };
 
@@ -189,11 +243,16 @@ public:
 
 };
 
+module;
+
+#include <string.h>
+
 export module GENERAL_API;
 import FOPS;
 import NOPS;
 
-class general_api : private fops, private nops { };
+//  is-a
+class general_api : public fops, public nops { };
 
 export module REQUEST_RESPODING;
 
@@ -220,7 +279,7 @@ module;
 
 export module GENERIC_IPV4_TCP;
 import GENERICAL_API;
-import <memory>
+import <memory>;  //  RAII
 
 extern "C" {
   void *malloc(size_t);

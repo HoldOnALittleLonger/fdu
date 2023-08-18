@@ -16,6 +16,8 @@ Structure:
    class fops;		  //  file operation APIs
    class nops;		  //  network operation APIs
 
+   THESE CLASSES,ALL RETURN ZERO REPRESENT SUCCESSFUL.
+
    f_server->primitives
      setListenAddressIPv4
      setListenPort
@@ -25,6 +27,7 @@ Structure:
      getCurrentAddress
      getCurrentPort
      getCurrentLinkType
+     init
      reset
 
    f_client->primitives
@@ -38,14 +41,17 @@ Structure:
    fdownload->primitives
      setDownloadPath
      setFileName
+     getFileName
      getFile
      setDownloadBufferSize
+     releaseLink
 
    fupload->primitives
      readRequest
      checkFile
      sendFile
      setUploadBufferSize
+     releaseLink
 
    fops->primitives
      general file operations
