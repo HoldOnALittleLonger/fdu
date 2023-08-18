@@ -35,12 +35,12 @@ export class f_server final : private general_api {
 	return *this;
       }
 
-    fupload(fupload &&robj) noexcept(false)
+    fupload(fupload &&robj)
       {
 	__doMove(robj);
       }
 
-    fupload &operator=(fupload &&robj) noexcept(false)
+    fupload &operator=(fupload &&robj)
       {
 	__doMove(robj);
 	return *this;
@@ -92,8 +92,9 @@ export class f_server final : private general_api {
 	throw FUPLOAD_ERR_COPY;
       }
       memcpy(_upload_buffer, robj._upload_Buffer, robj._ub_size);
-      if (_communicateSocket >= 0)
-	close(_communicateSocket);
+
+      if (_communicateSocket >= 0 && _communicateSocket != robj._communicateSocket)
+	releaseLink();
       _communicateSocket = robj._communicateSocket;
     }
 
@@ -101,11 +102,12 @@ export class f_server final : private general_api {
     {
       if (&robj == this)
 	return;
-      if (_communicateSocket >= 0)
-	close(_communicateSocket);
+
+      if (_communicateSocket >= 0 && _communicateSocket != robj._communicateSocket)
+	releaseLink();
+      _communicateSocket = robj._communicateSocket;
       if (_upload_buffer)
 	delete[] _upload_buffer;
-      _communicateSocket = robj._communicateSocket;
       _ub_size = robj._ub_size;
       _upload_buffer = robj._upload_buffer;
 
@@ -125,11 +127,11 @@ export class f_server final : private general_api {
   using f_server_err = F_SERVER_ERROR;
 
   enum LinkType {
-    IPV4,
-    UNKNOWN
+    IPV4 = 4,
+    UNKNOWN = 173
   };
 
-  f_server(unsigned short max_links = 3) : _maximum_links(max_links), _type(UNKNOWN)
+  f_server(unsigned short max_links = 3) noexcept(false) : _maximum_links(max_links), _type(UNKNOWN)
     {
       try {
 	_gip4tcp = new generic_ipv4_tcp;

@@ -19,7 +19,7 @@ int f_client::fdownload::getFile(void)
   request_header rh = {0};
   rh.fp_length = _filename->length();
   strncpy(rh.file_path, _filename->c_str(), rh.fp_length);
-  send(_socket_fd, &rh, sizeof(rh.fp_length) + rh.fp_length), 0);
+  send(_socket_fd, &rh, sizeof(rh.fp_length) + rh.fp_length, 0);
 
   responding_header respond = {0};
   std::ssize_t returned = recv(_socket_fd, &respond, sizeof(responding_header), 0);
@@ -33,11 +33,15 @@ int f_client::fdownload::getFile(void)
   if (!local_file) 
     return FDOWNLOAD_ERR_OPENFILE;
 
+  int local_file_fd(retriveFdForFstream(*local_file));
+  getWRFileLock(local_file_fd);
+
   std::size_t all_received = 0;
   while ((returned = recv(_socket_fd, _download_buffer, _db_size, 0)) > 0) {
     all_received += returned;
     local_file->write(_download_buffer, returned);
   }
+  releaseFileLock(local_file_fd);
 
   close(local_file);
   return (all_received != respond.file_length) ? FDOWNLOAD_ERR_FILE : 0;

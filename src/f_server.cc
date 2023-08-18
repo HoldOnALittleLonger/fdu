@@ -18,7 +18,7 @@ responding_header f_server::fupload::checkFile(const request_header &r)
     responding.state = FDU_FILE_NOEXIST;
   else {
     responding.file_length = getFileLength(r.file_path);
-    responding.state = FDU_FILE_READY;
+    responding.state = (responding.file_length > 0) ? FDU_FILE_READY : FDU_FILE_NOEXIST;
   }
   return responding;
 }
@@ -33,8 +33,10 @@ void f_server::fupload::sendFile(responding_header &responding, const request_he
   }
 
   std::fstream *f(open(std::string{request->file_path)), ios_base::in | ios_base::binary);
-  responding.state = FDU_FILE_NOEXIST;
-  goto __cannt_satisfy_request;
+  if (!f) {
+    responding.state = FDU_FILE_NOEXIST;
+    goto __cannt_satisfy_request;
+  }
 
   int fstream_fd(retriveFdForFstream(*f));
   getRDFileLock(fstream_fd);

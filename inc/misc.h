@@ -6,6 +6,7 @@ export module FOPS;
 
 import <string>;
 import <fstream>;
+import <exception>;
 
 extern "C" {
   int open(const char *, int);
@@ -45,10 +46,16 @@ public:
 	int handle(void) { return _M_file.fd(); }
       };
 
-      return static_cast<helper&>(fb).handle();
+      return dynamic_cast<helper&>(fb).handle();
     };
 
-    return retrive(f.rdbuf());
+    int fd(-1);
+    try {
+      fd = retrive(f);
+    } catch(std::bad_cast &x) {
+      fd = -1;
+    }
+    return fd;
   }
 
   virtual std::ssize_t read(int fd, char *buffer, std::size_t n)
@@ -358,7 +365,7 @@ export class generic_ipv4_tcp final : private generial_api {
     return *this;
   }
 
-  generic_ipv4_tcp &operator=(const decltype(*this) &&robj) noexcept
+  generic_ipv4_tcp &operator=(decltype(*this) &&robj) noexcept
   {
     __do_move(robj);
     return *this;

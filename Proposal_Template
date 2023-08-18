@@ -17,66 +17,207 @@ Structure:
    class nops;		  //  network operation APIs
 
    THESE CLASSES,ALL RETURN ZERO REPRESENT SUCCESSFUL.
+   BUT THEY ARE MAYBE THROW AN EXCEPTION.
 
    f_server->primitives
-     setListenAddressIPv4
-     setListenPort
-     setMaximumLinks
-     accept
-     getMaximumLinks
-     getCurrentAddress
-     getCurrentPort
-     getCurrentLinkType
-     init
-     reset
+     setListenAddressIPv4 { overloaed 2 }	- set listen address for IPv4.
+     setListenPort	    	      		- set listen port for translation layer.
+     setMaximumLinks				- set maximum number of listen queue.
+     accept					- accept a connection.
+     getMaximumLinks				- get maximum number of links.
+     getCurrentAddress				- return current listen address.
+     getCurrentAddressStr			- return current listen addres in a std::string object.
+     getCurrentPort				- return current listen port in host byte-order.
+     getCurrentLinkType				- return current link type.
+     init					- initialize server.
+     reset					- reset server.
+     DISABLE COPY
+     DISABLE MOVE
+
+     noexcept(false) {
+       f_server(max_links = 3); exception { F_SERVER_ERR_CONSTRUCT }
+     }
+
+     customize type {
+       class fupload;
+       using fupload_t = fupload;
+       enum LinkType { IPV4 = 4, UNKNOWN = 173 };
+     }
+
+     ERROR : {
+       these errors would be returned or be thrown out.
+       F_SERVER_ERR_CONSTRUCT = 1     	    	- construct object failed.
+       F_SERVER_ERR_UNKNOWN_LINK		- unknown link type.
+       F_SERVER_ERR_BIND			- bind socket failed.
+     }
+     using f_server_err = F_SERVER_ERROR;
 
    f_client->primitives
-     setPeerAddressIPv4
-     setPeerPort
-     connect
-     getCurrentLinkType
-     getPeerAddressIPv4
-     getPeerPort
+     setPeerAddressIPv4				- set peer's address in IPv4.
+     setPeerPort				- set peer's port in translation layer.
+     connect					- connect to peer.
+     getCurrentLinkType				- get current link type.
+     getPeerAddressIPv4				- get peer's address of IPv4
+     get PeerAddresIPv4Str			- get peer's address of IPv4 in alpha characters.
+     getPeerPort				- get peer's port in host byte-order.
+     ALLOW COPY					- copy data members.
+     ALLOW MOVE					- steal data members.original object would leave in invalid state.
+
+     noexcept(false) {
+       f_client(); exception { F_CLIENT_ERR_CONSTRUCT }
+       fdownload_t connect(int domain, int type, int protocol); exception { F_CLIENT_ERR_SOCKET | F_CLIENT_ERR_CONNECT }
+     }
+
+     customize type {
+       class fdownload;
+       using fdownload_t = fdownload;
+       enum LinkType { IPV4 = 4, UNKNOWN = 173 };
+     }
+
+     ERROR : {
+       errors would be returned or be thrown out.
+       F_CLIENT_ERR_CONSTRUCT = 1		- construct object failed.
+       F_CLIENT_ERR_SOCKET    			- create socket failed.
+       F_CLIENT_ERR_CONNECT			- connect failed.
+     }
+     using f_client_err = F_CLIENT_ERROR;
      
    fdownload->primitives
-     setDownloadPath
-     setFileName
-     getFileName
-     getFile
-     setDownloadBufferSize
-     releaseLink
+     setDownloadPath { overloaded 2 }		- set download path.
+     setFileName     { overloaded 2 }		- set file name(just contains one '/' in the string).
+     getFileName     	      	  		- return file name in a std::string object.
+     getFile    	   			- primary procedure used to get file from server.
+     setDownloadBufferSize 			- set download buffer size,this would cause buffer reallocate and copy(if new != old).
+     releaseLink	     	 		- client API used to release socket manually.
+     						  (if close socket in destructor,then can not return fdownload object from connect())
+     ALLOW COPY					- maybe reallocate buffer and copy data.
+     ALLOW MOVE					- no copy would happens.
+
+     noexcept(false) {
+       explicit fdownload(int sockfd);	exception { FDOWNLOAD_ERR_CONSTRUCT }
+       void setDownloadBufferSize(std::size_t n); exception { FDOWNLOAD_ERR_MEMORY }
+       fdownload(const fdownload &robj); exception { FDOWNLOAD_ERR_COPY }
+     }
+
+     ERROR : {
+       errors would be returned or be thrown out.
+       FDOWNLOAD_ERR_CONSTRUCT = 1		- construct object failed.
+       FDOWNLOAD_ERR_MEMORY    	 		- allocate memory failed.
+       FDOWNLOAD_ERR_COPY			- copy object failed.
+       FDOWNLOAD_ERR_RESPOND			- server can not satisfy request.
+       FDOWNLOAD_ERR_FILE			- file size is not matched.
+     }
+     using fdown_err = FDOWNLOAD_ERROR;
+
+     conversion : {
+       -> bool
+     }
+
+     this class only allows explicit construct.
 
    fupload->primitives
-     readRequest
-     checkFile
-     sendFile
-     setUploadBufferSize
-     releaseLink
+     readRequest				- read request from client.
+     checkFile					- check if required file is ready.
+     sendFile					- primary procedure used to send file data to client.
+     setUploadBufferSize			- set internal upload buffer size,maybe cause copy.
+     releaseLink				- release socket.
+     ALLOW COPY					- copy all data members.
+     ALLOW MOVE					- steal all daa members,after all,the original object would
+     	   					  be leave in invalid state.
 
+     conversion : {
+       -> bool
+     }
+						  
    fops->primitives
-     general file operations
+     general file operations {
+       no overloaded {
+         socket				        - create a socket
+	 bind 					- bind a socket
+	 listen					- listen on a socket
+	 accept					- accept link on a listen socket
+	 connect				- connect to a socket
+	 send					- send data to a socket
+	 recv					- recv data from a socket
+	 htonl					- host to network byte-order conversion
+	 ntohl					- network to host byte-order conversion
+	 inet_aton				- alpha characters for IPv4 address to network address
+	 inet_ntoa				- network address for IPv4 to alph characters.
+       }
+     }
 
    nops->primitives
-     general network operations
+     general network operations {
+       open { overloaded 2 }			- open file,C++ version returns a fstream object pointer.
+       retriveFdForFstream 			- retrive fd for a fstream object
+       read { overloaded 2 }			- read fd or read fstream
+       write { overloaded 2 }			- write fd or write fstream
+       lseek   		       	  		- POSIX lseek
+       seekp					- C++ stream seek
+       seekg					- C++ stream seek
+       tellp					- C++ stream tell
+       tellg					- C++ stream tell
+       close { overloaded 2 }			- close file,C++ version recycle a fstream pointer.
+       getFileLength { overloaded 2 }		- return std::size_t of a file
+       getRDFileLock   		  	      	- lock file with read lock
+       getWRFileLock 				- lock file with write lock
+       releaseFileLock				- release locked file
+     }
 
-   enum { FP_LENGTH }
-
-   struct request_header {
-     char *file_path;
-     size_t fp_len;
+   enum { FP_LENGTH = 256 }			- 256 bytes for file path length.
+   
+   struct request_header {			- request header,client would constructs such structure.
+     size_t fp_len;	 			- how many bytes is valid for file_path.
+     char file_path[FP_LENGTH];			- the file path would save inside this array.
    };
 
-   struct responding_header {
-     size_t file_length;
-     int state;
+   struct responding_header {			- responding header,server would constructs such structure.
+     size_t file_length;    			- how long is the file was required
+     int state;					- is the file available?
    }
 
    class generic_ipv4_tcp;  //  a class contains TCP port and address on IPv4.
    	 		    //  and contains some user interfaces used to manipluate data.
+     APIs {
+       setAddress { overloaded 2 }		- set IPv4 addres
+       getAddress	       	       		- get IPv4 address struct sockaddr object.
+       getAddressStr				- get IPv4 address in std::string object.
+       setPort   				- set IPv4 translation layer port.
+       ALLOW COPY  				- copy all data
+       ALLOW MOVE				- move all data,original object would be leave in invalid state.
+     }
+
+     noexcept(false) {
+       generic_ipv4_tcp(); exception { GIP4TCP_ERR_CONSTRUCT }
+     }
+			    
+     ERROR : {
+       this error would be returned or thrown out.
+       GIP4TCP_ERR_CONSTRUCT = 1		- construct object failed.
+     }
+     using gip4tcp_err = GIP4TCP_ERROR;
 
 Logic order:
-    fdu should has two modes,one is client,another is server.
-    how it work is determined by APIs called.
+   client					server
+						  init
+						  accept
+     connect
+						  start new thread(serve fupload_t)
+     getFile
+     send request header			    read request header
+     wait	  	  			    check file
+     wait					    send responding
+     wait					    send file data(if no error)
+     read file data(if no error)
+						    EOF
+					            close link
+     read -1					    exit
+     close link
+     exit
+
+   if the file is not ready(does not existed or permission is not satisfy),then an error would returned to client.
+     
+     
     
 Feature design:
 	<Modularity to interfaces could up the extendable attribute.Of course,it als helpful while you debuging.>

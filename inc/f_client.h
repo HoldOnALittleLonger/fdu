@@ -26,7 +26,8 @@ export class f_client final : private general_api {
       FDOWNLOAD_ERR_MEMORY,
       FDOWNLOAD_ERR_COPY,
       FDOWNLOAD_ERR_RESPOND,
-      FDOWNLOAD_ERR_FILE
+      FDOWNLOAD_ERR_FILE,
+      FDOWNLOAD_ERR_OPENFILE
     };
     using fdown_err = FDOWNLOAD_ERROR;
 
@@ -103,33 +104,24 @@ export class f_client final : private general_api {
     
     fdownload(const fdownload &robj) noexcept(false)
       {
-	_socket = robj._socket;
-	*_filename = *robj._filename;
-	*_directory = *robj._directory;
-	*_dentry = *robj._dentry;
-	try {
-	  setDownloadBufferSize(robj._db_size);
-	} catch (fdownload_err &x) {
-	  throw FDOWNLOAD_ERR_COPY;
-	}
-	memcpy(_download_buffer, robj._download_buffer, _db_size);
+	__doCopy(robj);
+      }
+
+    fdownload &operator=(const fdownload &robj) noexcept(false);
+      {
+	__doCopy(robj);
+	return *this;
       }
 
     fdownload(fdownload &&robj)
       {
-	_socket = robj._socket;
-	_filename = robj._filename;
-	_directory = robj._directory;
-	_dentry = robj._dentry;
-	_db_size = robj._db_size;
-	_download_buffer = robj._download_buffer;
+	__doMove(robj);
+      }
 
-	robj._socket = -1;
-	robj._filename = nullptr;
-	robj._directory = nullptr;
-	robj._dentry = nullptr;
-	robj._db_size = 0;
-	robj._download_buffer = nullptr;
+    fdownload &operator=(fdownload &&robj)
+      {
+	__doMove(robj);
+	return *this;
       }
 
     bool operator bool()
@@ -150,6 +142,51 @@ export class f_client final : private general_api {
     std::unique_ptr<std::string> _dentry;
     std::size_t _db_size;
     char *_download_buffer;
+
+    void __doCopy(const fdownload &robj) noexcept(false)
+    {
+      if (&robj == this)
+	return;
+
+      try {
+	setDownloadBufferSize(robj._db_size);
+      } catch (fdownload_err &x) {
+	throw FDOWNLOAD_ERR_COPY;
+      }
+      memcpy(_download_buffer, robj._download_buffer, _db_size);
+
+      if (_socket >= 0 && robj._socket != _socket)
+	releaseLink();
+      _socket = robj._socket;
+      *_filename = *robj._filename;
+      *_directory = *robj._directory;
+      *_dentry = *robj._dentry;
+    }
+
+    void __doMove(fdownload &&robj) noexcept
+    {
+      if (&robj == this)
+	return;
+
+      if (_socket >= 0 && _socket != robj._socket)
+	releaseLink();
+      _socket = robj._socket;
+
+      _filename = robj._filename;
+      _directory = robj._directory;
+      _dentry = robj._dentry;
+      _db_size = robj._db_size;
+      if (_download_buffer)
+	delete[] _download_buffer;
+      _download_buffer = robj._download_buffer;
+
+      robj._socket = -1;
+      robj._filename = nullptr;
+      robj._directory = nullptr;
+      robj._dentry = nullptr;
+      robj._db_size = 0;
+      robj._download_buffer = nullptr;
+    }
   };
 
   using fdownload_t = fdownload;
