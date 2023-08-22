@@ -141,6 +141,8 @@ export class f_client final : private general_api {
 
     void releaseLink(void)
     {
+      if(_socket < 0)  //  close a fd which is less than 0 is nonsence.
+	return;
       shutdown(_socket, SHUT_RDWR);
       _socket = -1;
     }
@@ -171,7 +173,7 @@ export class f_client final : private general_api {
     {
       if (_socket >= 0 && _socket != robj._socket)
 	releaseLink();
-      _socket = robj._socket;
+      _socket = dup(robj._socket);
 
       _filename = robj._filename;
       _directory = robj._directory;
@@ -181,7 +183,7 @@ export class f_client final : private general_api {
 	delete[] _download_buffer;
       _download_buffer = robj._download_buffer;
 
-      robj._socket = -1;
+      robj.releaseLink();
       robj._filename = nullptr;
       robj._directory = nullptr;
       robj._dentry = nullptr;

@@ -81,6 +81,19 @@ Structure:
        F_CLIENT_ERR_CONNECT			- connect failed.
      }
      using f_client_err = F_CLIENT_ERROR;
+
+   //  have to determine the copy and move behavior,if the object is type of fdownload of fupload has
+   //  a valid socket is opened. 
+   //  should we dont copy or move either?
+   //  or we should copy fd and then close another?
+   //  case 1> this require user call releaseLink() manually before copy or move.
+   //          but maybe some procedure use -1 to initialize an object.
+   //  case 2> more syscall need to finished.
+   //          costs increase.
+   //  I dont know whether the destructor will be invoked immediately after moved.
+   //  so want copy socket either copy or move.
+
+   //  class does COPY or MOVE right object should not is itself.
      
    fdownload->primitives
      setDownloadPath { overloaded 2 }		- set download path.
@@ -95,7 +108,6 @@ Structure:
 
      noexcept(false) {
        explicit fdownload(int sockfd);	exception { FDOWNLOAD_ERR_CONSTRUCT }
-       void setDownloadBufferSize(std::size_t n); exception { FDOWNLOAD_ERR_MEMORY }
        fdownload(const fdownload &robj); exception { FDOWNLOAD_ERR_COPY }
      }
 

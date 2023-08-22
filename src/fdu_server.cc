@@ -9,11 +9,11 @@ static void fdu_server_worker(typename f_server::fupload_t upload)
   upload.sendFile(responding, rh);
 }
 
-//  typedef
-using worker = std::function<void(typename f_server::fupload_t)>;
-
 int fdu_server(const std::string &listen_address, unsigned long port, unsigned int maximum_links = 3)
 {
+  //  typedef
+  using worker = std::function<void(typename f_server::fupload_t)>;
+
   std::unique_ptr<f_server> local_server_ptr(nullptr);
   try {
     local_server_ptr = new f_server(maximum_links);

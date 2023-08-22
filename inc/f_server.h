@@ -71,9 +71,11 @@ export class f_server final : private general_api {
     }
 
     //  of course,kernel would does for us,but
-    //  the time is program exited.
+    //  the time is program had been exited.
     void releaseLink(void)
     {
+      if (_communicateSocket < 0)
+	return;
       shutdown(_communicateSocket, SHUT_RDWR);
       _communicateSocket = -1;
     }
@@ -102,13 +104,13 @@ export class f_server final : private general_api {
     {
       if (_communicateSocket >= 0 && _communicateSocket != robj._communicateSocket)
 	releaseLink();
-      _communicateSocket = robj._communicateSocket;
+      _communicateSocket = dup(robj._communicateSocket);
       if (_upload_buffer)
 	delete[] _upload_buffer;
       _ub_size = robj._ub_size;
       _upload_buffer = robj._upload_buffer;
 
-      robj._communicateSocket = -1;
+      robj.releaseLink();
       robj._ub_size = 0;
       robj._upload_buffer = nullptr;
     }
