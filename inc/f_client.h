@@ -43,8 +43,7 @@ export class f_client final : private general_api {
     }
     ~fdownload()
       {
-	//  destructor does not release socket,
-	//  client have to release it manually.
+	releaseLink();
 	delete[] _download_buffer;
       }
 
@@ -57,7 +56,7 @@ export class f_client final : private general_api {
     //  _dentry is @_directory/@filename
     void setFileName(const std::string &filename)
     {
-      std::string::iterator filename_with_slash(filename.begin());
+      auto filename_with_slash(filename.begin());
       for (auto it(filename.end()); it >= filename.begin(); --it) {
 	if (*it == '/') {
 	  filename_with_slash = it;
@@ -68,6 +67,7 @@ export class f_client final : private general_api {
       std::size_t length(filename.end() - filename_with_slash);
       std::string the_file(filename.substr(displacement, length));
       *_dentry = *_directory + the_file;
+      *_filename = filename;
     }
 
     //  maybe client needs this function to examine that
@@ -87,19 +87,25 @@ export class f_client final : private general_api {
       *_directory = download_path;
     }
 
-    void setDownloadBufferSize(std::size_t n) noexcept(false)
+    unsigned short setDownloadBufferSize(std::size_t n)
     {
       if (n == _db_size)  //  if n == _db_size,do nothing.
-	return;
+	return 0;
 
       auto n(_db_size);
       char *temp = new char[n];
       if (!temp)
-	throw FDOWNLOAD_ERR_MEMORY;
+	return FDOWNLOAD_ERR_MEMORY;
       if (_download_buffer)
 	delete[] _download_buffer;
       _db_size = n;
       _download_buffer = temp;
+      return 0;
+    }
+
+    bool checkFileIsExisted(void)
+    {
+      return getFileLength(*dentry) != 0;
     }
     
     fdownload(const fdownload &robj) noexcept(false)
@@ -109,6 +115,8 @@ export class f_client final : private general_api {
 
     fdownload &operator=(const fdownload &robj) noexcept(false);
       {
+	if (this == &robj)
+	  return *this;
 	__doCopy(robj);
 	return *this;
       }
@@ -120,6 +128,8 @@ export class f_client final : private general_api {
 
     fdownload &operator=(fdownload &&robj)
       {
+	if (this == &robj)
+	  return *this;
 	__doMove(robj);
 	return *this;
       }
@@ -145,19 +155,13 @@ export class f_client final : private general_api {
 
     void __doCopy(const fdownload &robj) noexcept(false)
     {
-      if (&robj == this)
-	return;
-
-      try {
-	setDownloadBufferSize(robj._db_size);
-      } catch (fdownload_err &x) {
+      if (setDownloadBufferSize(robj._db_size) != 0)
 	throw FDOWNLOAD_ERR_COPY;
-      }
       memcpy(_download_buffer, robj._download_buffer, _db_size);
 
       if (_socket >= 0 && robj._socket != _socket)
 	releaseLink();
-      _socket = robj._socket;
+      _socket = dup(robj._socket);
       *_filename = *robj._filename;
       *_directory = *robj._directory;
       *_dentry = *robj._dentry;
@@ -165,9 +169,6 @@ export class f_client final : private general_api {
 
     void __doMove(fdownload &&robj) noexcept
     {
-      if (&robj == this)
-	return;
-
       if (_socket >= 0 && _socket != robj._socket)
 	releaseLink();
       _socket = robj._socket;

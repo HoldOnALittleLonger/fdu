@@ -9,8 +9,10 @@ f_client::connect(int domain, int type, int protocol) noexcept(false)
   int sockfd(socket(domain, type, protocol));
   if (sockfd < 0)
     throw F_CLIENT_ERR_SOCKET;
-  if (connect(sockfd, getPeerAddressIPv4(), sizeof(getPeerAddressIPv4())) < 0)
+  if (connect(sockfd, getPeerAddressIPv4(), sizeof(getPeerAddressIPv4())) < 0) {
+    shutdown(sockfd, SHUT_RDWR);
     throw F_CLIENT_ERR_CONNECT;
+  }
   return fdownload_t(sockfd);
 }
 

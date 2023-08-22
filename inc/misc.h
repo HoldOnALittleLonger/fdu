@@ -16,6 +16,7 @@ extern "C" {
   int close(int);
   int stat(const char *, struct stat *);
   int fcntl(int, int, ...);
+  int dup(int);
 }
 
 export class fops {
@@ -56,6 +57,11 @@ public:
       fd = -1;
     }
     return fd;
+  }
+
+  virtual int dup(int oldfd)
+  {
+    return ::dup(oldfd);
   }
 
   virtual std::ssize_t read(int fd, char *buffer, std::size_t n)

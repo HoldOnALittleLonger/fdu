@@ -18,19 +18,21 @@ export class f_server final : private general_api {
     }
     ~fupload()
       {
-	//  client have to release socket manually,
-	//  if destructor release socket,then
-	//  can not return from server or client function(by the time,the socket had been closed)
+	releaseLink();
 	delete[] _upload_buffer;
       }
 
     fupload(const fupload &robj) noexcept(false)
       {
+	if (this == &robj)
+	  return;
 	__doCopy(robj);
       }
 
     fupload &operator=(const fupload &robj) noexcept(false)
       {
+	if (this == &robj)
+	  return *this;
 	__doCopy(robj);
 	return *this;
       }
@@ -42,6 +44,8 @@ export class f_server final : private general_api {
 
     fupload &operator=(fupload &&robj)
       {
+	if (this == &robj)
+	  return *this;
 	__doMove(robj);
 	return *this;
       }
@@ -51,18 +55,19 @@ export class f_server final : private general_api {
       return _communicateSocket >= 0;
     }
 
-    void setUploadBufferSize(std::size_t n) noexcept(false)
+    unsigned short setUploadBufferSize(std::size_t n)
     {
       if (n == _ub_size)
-	return;
+	return 0;
       //  rcu
       char *temp = new char[n];
       if (!temp)
-	throw FUPLOAD_ERR_MEMORY;
+	return FUPLOAD_ERR_MEMORY;
       if (_upload_buffer)
 	delete[] _upload_buffer;
       _upload_buffer = temp;
       _ub_size = n;
+      return 0;
     }
 
     //  of course,kernel would does for us,but
@@ -70,11 +75,12 @@ export class f_server final : private general_api {
     void releaseLink(void)
     {
       shutdown(_communicateSocket, SHUT_RDWR);
+      _communicateSocket = -1;
     }
 
-    const request_header *readRequest(void);
+    const request_header &readRequest(void);
     responding_header checkFile(const request_header &);
-    void sendFile(responding_header &, const request_header *);
+    void sendFile(responding_header &, const request_header &);
 
   private:
     int _communicateSocket;
@@ -83,26 +89,17 @@ export class f_server final : private general_api {
 
     void __doCopy(const fupload &robj) noexcept(false)
     {
-      if (this == &robj)
-	return;
-
-      try {
-	setUploadBufferSize(robj._ub_size);
-      } catch(...) {
+      if (!setUploadBufferSize(robj._ub_size))
 	throw FUPLOAD_ERR_COPY;
-      }
       memcpy(_upload_buffer, robj._upload_Buffer, robj._ub_size);
 
       if (_communicateSocket >= 0 && _communicateSocket != robj._communicateSocket)
 	releaseLink();
-      _communicateSocket = robj._communicateSocket;
+      _communicateSocket = dup(robj._communicateSocket);
     }
 
     void __doMove(fupload &&robj)
     {
-      if (&robj == this)
-	return;
-
       if (_communicateSocket >= 0 && _communicateSocket != robj._communicateSocket)
 	releaseLink();
       _communicateSocket = robj._communicateSocket;
@@ -131,7 +128,7 @@ export class f_server final : private general_api {
     UNKNOWN = 173
   };
 
-  f_server(unsigned short max_links = 3) noexcept(false) : _maximum_links(max_links), _type(UNKNOWN)
+  f_server(unsigned short max_links) noexcept(false) : _maximum_links(max_links), _type(UNKNOWN)
     {
       try {
 	_gip4tcp = new generic_ipv4_tcp;
@@ -192,7 +189,7 @@ export class f_server final : private general_api {
     return _gip4tcp->getPort();
   }
 
-  int init(void)
+  unsigned short init(void)
   {
     if (_type == UNKNOWN)
       return F_SERVER_ERR_UNKNOWN_LINK;

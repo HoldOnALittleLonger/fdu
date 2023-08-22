@@ -1,14 +1,14 @@
 import "f_server.h";
 module F_SERVER;
 
-const request_header *f_server::fupload::readRequest(void)
+const request_header &f_server::fupload::readRequest(void)
 {
   static request_header rh = {0};
   memset(rh.file_path, '\0', FP_LENGTH);
   recv(_communicateSocket, &rh.fp_length, sizeof(std::size_t), 0);
   if (rh.fp_length > 0 && rh.fp_length < FP_LENGTH)
     recv(_communicateSocket, rh.file_path, rh.fp_length, 0);
-  return &rh;
+  return rh;
 }
 
 responding_header f_server::fupload::checkFile(const request_header &r)
@@ -23,7 +23,7 @@ responding_header f_server::fupload::checkFile(const request_header &r)
   return responding;
 }
 
-void f_server::fupload::sendFile(responding_header &responding, const request_header *request)
+void f_server::fupload::sendFile(responding_header &responding, const request_header &request)
 {
  __cannt_satisfy_request:
   //  if file is not existed,then return responding and exit function
