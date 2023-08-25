@@ -37,8 +37,8 @@ export class f_client final : private general_api {
       _directory = new std::string;
       _dentry = new std::string;
       _db_size = 4096;
-      _download_buffer = new char[_db_size];
-      if (!_filename || !_directory || !_dentry || !_download_buffer)
+      _download_buffer = nullptr;
+      if (!_filename || !_directory || !_dentry)
 	throw FDOWNLOAD_ERR_CONSTRUCT;
     }
     ~fdownload()
@@ -87,20 +87,11 @@ export class f_client final : private general_api {
       *_directory = download_path;
     }
 
-    unsigned short setDownloadBufferSize(std::size_t n)
+    void setDownloadBufferSize(std::size_t n)
     {
-      if (n == _db_size)  //  if n == _db_size,do nothing.
-	return 0;
-
-      auto n(_db_size);
-      char *temp = new char[n];
-      if (!temp)
-	return FDOWNLOAD_ERR_MEMORY;
-      if (_download_buffer)
-	delete[] _download_buffer;
+      if (!n)
+	n = 4096;  //  does not allow zero byte
       _db_size = n;
-      _download_buffer = temp;
-      return 0;
     }
 
     bool checkFileIsExisted(void)
@@ -128,8 +119,6 @@ export class f_client final : private general_api {
 
     fdownload &operator=(fdownload &&robj)
       {
-	if (this == &robj)
-	  return *this;
 	__doMove(robj);
 	return *this;
       }
@@ -157,9 +146,15 @@ export class f_client final : private general_api {
 
     void __doCopy(const fdownload &robj) noexcept(false)
     {
-      if (setDownloadBufferSize(robj._db_size) != 0)
-	throw FDOWNLOAD_ERR_COPY;
-      memcpy(_download_buffer, robj._download_buffer, _db_size);
+      setDownloadBufferSize(robj._db_size);
+      if (robj._download_buffer) {
+	try {
+	  __allocateDownloadBuffer();
+	} catch (std::bad_alloc &x) {
+	  throw FDOWNLOAD_ERR_COPY;
+	}
+	memcpy(_download_buffer, robj._download_buffer, _db_size);
+      }
 
       if (_socket >= 0 && robj._socket != _socket)
 	releaseLink();
@@ -190,6 +185,19 @@ export class f_client final : private general_api {
       robj._db_size = 0;
       robj._download_buffer = nullptr;
     }
+
+    void __allocateDownloadBuffer(void) noexcept(false)
+    {
+      char *tempPtr = new char[_db_size];
+
+      //  rcu
+      if (!tempPtr)
+	throw std::bad_alloc();
+      if (_download_buffer)
+	delete[] _download_buffer;
+      _download_buffer = tempPtr;
+    }
+
   };
 
   using fdownload_t = fdownload;

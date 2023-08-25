@@ -18,6 +18,13 @@ f_client::connect(int domain, int type, int protocol) noexcept(false)
 
 int f_client::fdownload::getFile(void)
 {
+  if (!_download_buffer)
+    try {
+      __allocateDownloadBuffer();
+    } catch (std::bad_alloc &x) {
+      return FDOWNLOAD_ERR_MEMORY;
+    }
+
   request_header rh = {0};
   rh.fp_length = _filename->length();
   strncpy(rh.file_path, _filename->c_str(), rh.fp_length);
