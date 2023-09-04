@@ -9,12 +9,19 @@ export class f_server final : private general_api {
 
   class fupload final : private general_api {
   public:
+
+    enum FUPLOAD_ERROR {
+      FUPLOAD_ERR_FILE_NOEXIST = FDU_FILE_NOEXIST,
+      FUPLOAD_ERR_COPY,
+      FUPLOAD_ERR_MEMORY,
+      FUPLOAD_ERR_OPEN
+    };
+    using fup_err = FUPLOAD_ERROR;
+
     explicit fupload(int sockfd) : _communicateSocket(sockfd)
     {
       _ub_size = 4096;
-      _upload_buffer = new char[_ub_size];
-      if (!_upload_buffer)
-	throw FUPLOAD_ERR_CONSTRUCT;
+      _upload_buffer = nullptr;
     }
     ~fupload()
       {
@@ -24,8 +31,6 @@ export class f_server final : private general_api {
 
     fupload(const fupload &robj) noexcept(false)
       {
-	if (this == &robj)
-	  return;
 	__doCopy(robj);
       }
 
@@ -44,8 +49,6 @@ export class f_server final : private general_api {
 
     fupload &operator=(fupload &&robj)
       {
-	if (this == &robj)
-	  return *this;
 	__doMove(robj);
 	return *this;
       }
@@ -55,19 +58,11 @@ export class f_server final : private general_api {
       return _communicateSocket >= 0;
     }
 
-    unsigned short setUploadBufferSize(std::size_t n)
+    void setUploadBufferSize(std::size_t n)
     {
-      if (n == _ub_size)
-	return 0;
-      //  rcu
-      char *temp = new char[n];
-      if (!temp)
-	return FUPLOAD_ERR_MEMORY;
-      if (_upload_buffer)
-	delete[] _upload_buffer;
-      _upload_buffer = temp;
+      if (!n)
+	n = 4096;
       _ub_size = n;
-      return 0;
     }
 
     //  of course,kernel would does for us,but
@@ -82,7 +77,7 @@ export class f_server final : private general_api {
 
     const request_header &readRequest(void);
     responding_header checkFile(const request_header &);
-    void sendFile(responding_header &, const request_header &);
+    unsigned short sendFile(responding_header &, const request_header &);
 
   private:
     int _communicateSocket;
@@ -91,9 +86,15 @@ export class f_server final : private general_api {
 
     void __doCopy(const fupload &robj) noexcept(false)
     {
-      if (!setUploadBufferSize(robj._ub_size))
-	throw FUPLOAD_ERR_COPY;
-      memcpy(_upload_buffer, robj._upload_Buffer, robj._ub_size);
+      setUploadBufferSize(robj._ub_size);
+      if (robj._upload_buffer) {
+	try {
+	  __allocateUploadBuffer();
+	} catch (std::bad_alloca &x) {
+	  throw FUPLOAD_ERR_COPY;
+	}
+	memcpy(_upload_buffer, robj._upload_buffer, _ub_size);
+      }
 
       if (_communicateSocket >= 0 && _communicateSocket != robj._communicateSocket)
 	releaseLink();
@@ -114,6 +115,18 @@ export class f_server final : private general_api {
       robj._ub_size = 0;
       robj._upload_buffer = nullptr;
     }
+    
+    void __allocateUploadBuffer(void) noexcept(false)
+    {
+      //  rcu
+      char *tempPtr = new char[_ub_size];
+      if (!tempPtr)
+	throw std::bad_alloc();
+      if (_upload_buffer)
+	delete[] _upload_buffer;
+      _upload_buffer = tempPtr;
+    }
+
   };
   using fupload_t = fupload;
 

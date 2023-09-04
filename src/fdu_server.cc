@@ -1,3 +1,31 @@
+#include <signal.h>
+
+extern "C" {
+  int sigaction(int, const struct sigaction *, struct sigaction *);
+};
+
+extern int fdu_server_loop_end_condition;
+
+static void sigint_action(int v)
+{
+  fdu_server_loop_end_condition = 1;
+  return;
+}
+
+inline 
+static int setSIGINTAction(void)
+{
+  struct sigaction int_act = {
+    .sa_handler = sigint_action,
+    .sa_action = NULL,
+    .sa_flags = 0,
+  };
+  sigemptyset(&int_act.sa_mask);
+  sigaddset(&int_act.sa_mask, SIGINT);
+
+  return sigaction(SIGINT, &int_act, NULL);
+}
+
 import "fdu_cs.h";
 import F_SERVER;
 
@@ -6,15 +34,17 @@ static void fdu_server_worker(typename f_server::fupload_t upload)
 {
   const request_header &rh = upload.readRequest();
   responding_header responding = upload.checkFile(rh);
-  upload.sendFile(responding, rh);
+  (void)upload.sendFile(responding, rh);
 }
+
+int fdu_server_loop_end_condition = 0;
 
 int fdu_server(const std::string &listen_address, unsigned long port, unsigned int maximum_links = 3)
 {
   //  typedef
   using worker = std::function<void(typename f_server::fupload_t)>;
 
-  std::unique_ptr<f_server> local_server_ptr(nullptr);
+  std::unique_ptr<f_server> local_server_ptr(nullptr);  //  f_server has throw because TCP/IP resource has throw
   try {
     local_server_ptr = new f_server(maximum_links);
   } catch (f_server::f_server_err &x) {
@@ -35,20 +65,20 @@ int fdu_server(const std::string &listen_address, unsigned long port, unsigned i
   //  if initialization is succeed,then we enter a loop wait client come.
 
   //  server have to handle SIGINT,that will let server stop.
-  int loop_end_condition(0);
+  if (setSIGINTAction() < 0) {
+    cerr<<"Install SIGINT action was failed."<<endl;
+    return -1;
+  }
+
+  fdu_server_loop_end_condition(0);
   do {
-    std::unique_ptr<f_server::fupload_t> uploadPtr(nullptr);
-    try {
-      uploadPtr = new f_server::fupload_t(local_server_ptr->accept());
-    } catch (std::bad_alloc &x) {
-      cerr<<"Allocate Memory was failed.SKIP."<<endl;
-    } catch (typename f_server::fupload::fupload_err &x) {
-      cerr<<"Generate worker object was failed.SKIP."<<endl;
-    }
+    typename f_server::fupload_t upload(local_server_ptr->accept());  //  fupload(int) no throw
+                                                                      //  but there will call to copy-constructor
+                                                                      //  it only throw when copy-from has buffer allocated
     worker new_worker = fdu_server_worker;
     std::thread new_thread(new_worker, upload);
     new_thread.detach();
-  } while (!loop_end_condition);
+  } while (!fdu_server_loop_end_condition);
 
   return 0;
 }

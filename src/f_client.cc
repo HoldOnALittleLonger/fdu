@@ -16,7 +16,7 @@ f_client::connect(int domain, int type, int protocol) noexcept(false)
   return fdownload_t(sockfd);
 }
 
-int f_client::fdownload::getFile(void)
+unsigned short f_client::fdownload::getFile(void)
 {
   if (!_download_buffer)
     try {

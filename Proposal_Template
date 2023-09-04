@@ -45,7 +45,7 @@ Structure:
      }
 
      ERROR : {
-       these errors would be returned or be thrown out.
+       these errors would be returned or by thrown out.
        F_SERVER_ERR_CONSTRUCT = 1     	    	- construct object failed.
        F_SERVER_ERR_UNKNOWN_LINK		- unknown link type.
        F_SERVER_ERR_BIND			- bind socket failed.
@@ -75,7 +75,7 @@ Structure:
      }
 
      ERROR : {
-       errors would be returned or be thrown out.
+       errors would be returned or by thrown out.
        F_CLIENT_ERR_CONSTRUCT = 1		- construct object failed.
        F_CLIENT_ERR_SOCKET    			- create socket failed.
        F_CLIENT_ERR_CONNECT			- connect failed.
@@ -112,7 +112,7 @@ Structure:
      }
 
      ERROR : {
-       errors would be returned or be thrown out.
+       errors would be returned or by thrown out.
        FDOWNLOAD_ERR_CONSTRUCT = 1		- construct object failed.
        FDOWNLOAD_ERR_MEMORY    	 		- allocate memory failed.
        FDOWNLOAD_ERR_COPY			- copy object failed.
@@ -125,7 +125,7 @@ Structure:
        -> bool
      }
 
-     this class only allows explicit construct.
+     this class only allows to construct explicitly.
 
    fupload->primitives
      readRequest				- read request from client.
@@ -137,9 +137,22 @@ Structure:
      ALLOW MOVE					- steal all daa members,after all,the original object would
      	   					  be leave in invalid state.
 
+     noexcept(false) : { COPY }
+
+     ERROR : {
+       errors would be returned or by thrown out.
+       FUPLOAD_ERR_FILE = FDU_FILE_NOEXIST	- file error
+       FUPLOAD_ERR_COPY	                        - copy failed
+       FUPLOAD_ERR_MEMORY			- allocate memory failed
+       FUPLOAD_ERR_OPEN				- failed to open file
+     }
+     using fup_err = FUPLOAD_ERROR;
+
      conversion : {
        -> bool
      }
+
+     this class only allows to construct explicitly.
 						  
    fops->primitives
      general file operations {
@@ -204,7 +217,7 @@ Structure:
      }
 			    
      ERROR : {
-       this error would be returned or thrown out.
+       this error would be returned or by thrown out.
        GIP4TCP_ERR_CONSTRUCT = 1		- construct object failed.
      }
      using gip4tcp_err = GIP4TCP_ERROR;
@@ -228,7 +241,8 @@ Logic order:
      exit
 
    if the file is not ready(does not existed or permission is not satisfy),then an error would returned to client.
-     
+
+   server have to deal with SIGINT as its condition for listen loop should to be endup.     
      
     
 Feature design:

@@ -23,18 +23,30 @@ responding_header f_server::fupload::checkFile(const request_header &r)
   return responding;
 }
 
-void f_server::fupload::sendFile(responding_header &responding, const request_header &request)
+unsigned short f_server::fupload::sendFile(responding_header &responding, const request_header &request)
 {
+  int retv(FUPLOAD_ERR_FILE);
  __cannt_satisfy_request:
   //  if file is not existed,then return responding and exit function
   if (responding.state != FDU_FILE_READY) {
     send(_communicateSocket, &responding, sizeof(responding_header), 0);
-    return;
+    return retv;
   }
+
+  if (!_upload_buffer)
+    try {
+      __allocateUploadBuffer();
+    } catch (std::bad_alloc &x) {
+      responding.state = FDU_FILE_NOEXIST;
+      retv = FUPLOAD_ERR_MEMORY;
+      goto __cannt_satisfy_request;
+    }
+
 
   std::fstream *f(open(std::string{request->file_path)), ios_base::in | ios_base::binary);
   if (!f) {
     responding.state = FDU_FILE_NOEXIST;
+    retv = FUPLOAD_ERR_OPEN;
     goto __cannt_satisfy_request;
   }
 
@@ -45,6 +57,7 @@ void f_server::fupload::sendFile(responding_header &responding, const request_he
     send(_communicateSocket, _upload_buffer, readed, 0);
   releaseFileLock(fstream_fd);
   close(f);
+  return 0;
 }
 
 fupload_t f_server::accept(void)

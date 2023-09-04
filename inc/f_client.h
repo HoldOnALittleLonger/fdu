@@ -47,7 +47,7 @@ export class f_client final : private general_api {
 	delete[] _download_buffer;
       }
 
-    int getFile(void);
+    unsigned short getFile(void);
     void setFileName(const char *filename)
     {
       setFileName(std::string{filename});
@@ -158,7 +158,9 @@ export class f_client final : private general_api {
 
       if (_socket >= 0 && robj._socket != _socket)
 	releaseLink();
-      _socket = dup(robj._socket);
+      _socket = dup(robj._socket);    //  call dup to copy socket might couse copy semantic error.
+                                      //  but there is no way to ensure that @robj will not be destroyed after
+                                      //  copy completed.
       *_filename = *robj._filename;
       *_directory = *robj._directory;
       *_dentry = *robj._dentry;

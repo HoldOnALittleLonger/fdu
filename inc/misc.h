@@ -265,13 +265,13 @@ import FOPS;
 import NOPS;
 
 //  is-a
-class general_api : public fops, public nops { };
+export class general_api : public fops, public nops { };
 
 export module REQUEST_RESPODING;
 
-enum { FP_LENGTH = 256 };
+export enum { FP_LENGTH = 256 };
 
-enum {
+export enum {
   FDU_FILE_READY,
   FDU_FILE_NOEXIST
 };
