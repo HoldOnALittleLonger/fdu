@@ -7,6 +7,7 @@ import GENERIC_IPV4_TCP;
 import <cstddef>;
 import <cstdlib>;
 import <cstring>;
+import <memory>;
 
 export class f_client final : private general_api {
  public:
@@ -36,7 +37,7 @@ export class f_client final : private general_api {
       _filename = new std::string;
       _directory = new std::string;
       _dentry = new std::string;
-      _db_size = 4096;
+      _db_size = FDU_DEFAULT_BUFFER_SIZE;
       _download_buffer = nullptr;
       if (!_filename || !_directory || !_dentry)
 	throw FDOWNLOAD_ERR_CONSTRUCT;
@@ -90,7 +91,7 @@ export class f_client final : private general_api {
     void setDownloadBufferSize(std::size_t n)
     {
       if (!n)
-	n = 4096;  //  does not allow zero byte
+	n = FDU_DEFAULT_BUFFER_SIZE;  //  does not allow zero byte
       _db_size = n;
     }
 

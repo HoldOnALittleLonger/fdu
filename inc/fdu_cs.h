@@ -2,8 +2,10 @@
 #define _FDU_CS_H_
 
 #include <thread>
-#include <functional>
 #include <memory>
+#include <functional>
+#include <string>
+#include <cstddef>
 
 extern int fdu_client(const std::string &file_path_fully, const std::string &download_directory,
 		      const std::string &server_address, unsigned long server_port);

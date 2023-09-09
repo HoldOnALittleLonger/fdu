@@ -2,6 +2,8 @@ module;
 #include <unistd.h>
 #include <fcntl.h>
 
+
+
 export module FOPS;
 
 import <string>;
@@ -263,6 +265,8 @@ module;
 export module GENERAL_API;
 import FOPS;
 import NOPS;
+
+export enum { FDU_DEFAULT_BUFFER_SIZE = 4096u };
 
 //  is-a
 export class general_api : public fops, public nops { };

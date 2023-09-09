@@ -4,6 +4,9 @@ export module F_SERVER;
 import GENERAL_API;
 import GENERIC_IPV4_TCP;
 
+import <cstddef>;
+import <memory>;
+
 export class f_server final : private general_api {
  public:
 
@@ -20,13 +23,13 @@ export class f_server final : private general_api {
 
     explicit fupload(int sockfd) : _communicateSocket(sockfd)
     {
-      _ub_size = 4096;
+      _ub_size = FDU_DEFAULT_BUFFER_SIZE;
       _upload_buffer = nullptr;
     }
     ~fupload()
       {
 	releaseLink();
-	delete[] _upload_buffer;
+	delete[] _upload_buffer;  //  if @_upload_buffer had never been allocated,then it has default value nullptr.
       }
 
     fupload(const fupload &robj) noexcept(false)
@@ -61,7 +64,7 @@ export class f_server final : private general_api {
     void setUploadBufferSize(std::size_t n)
     {
       if (!n)
-	n = 4096;
+	n = FDU_DEFAULT_BUFFER_SIZE;
       _ub_size = n;
     }
 

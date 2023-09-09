@@ -246,7 +246,20 @@ Logic order:
      
     
 Feature design:
-	<Modularity to interfaces could up the extendable attribute.Of course,it als helpful while you debuging.>
+   usage format is command + option
+   process mode : asserver , asclient
+   asserver options : -a <listen address> -p <listen port> -l <maximum links>
+   asclient options : -s <server address> -p <server port> -f <path of file on server> -d <directory>
+
+   allow default values for these options :
+     maximum links : 3
+     listen address : 0.0.0.0
+     listen port : 58892
+     
+     server address : 0.0.0.0
+     server port : 58892
+     directory : ./
+     
 
 Develop environment:
     g++ 10.3.0
