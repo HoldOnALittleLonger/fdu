@@ -1,10 +1,16 @@
 #include <unistd.h>
 
-import "fdu_cs.h";
-import <cstring>;
-import <iostream>;
-import <cstdlib>;
-import <exception>;
+//import "fdu_cs.h";
+//import <cstring>;
+//import <iostream>;
+//import <cstdlib>;
+//import <exception>;
+
+#include "fdu_cs.h"
+#include <cstring>
+#include <iostream>
+#include <cstdlib>
+#include <exception>
 
 enum FDU_MODE { ASSERVER, ASCLIENT, UNKNOWN_MODE };
 
@@ -15,7 +21,7 @@ static void fdu_help(void)
   std::cerr<<"Client options : -s <server address> -p <server port> -f <file path> -d <directory>"<<std::endl;
 }
 
-static FDU_MODE which_mode_now(const char **argv, unsigned int n)
+static FDU_MODE which_mode_now(char **argv, unsigned int n)
 {
   if (n < 2) {
     fdu_help();
@@ -55,7 +61,7 @@ struct fdu_client_options {
   }
 };
 
-static enum OPTION_EXCEPTIONS {
+enum OPTION_EXCEPTIONS {
   UNKNOWN_OPTION,
   LACK_NECESSARY_OPTION
 };
@@ -83,36 +89,37 @@ int main(int argc, char *argv[])
   FDU_MODE fdu_mode(which_mode_now(argv, argc));
   switch (fdu_mode) {
   case ASSERVER:
-    ;
-    fdu_server_options options;
+    {
+    fdu_server_options s_options;
     try {
-      options = retriveServerOptions(argv + 2, argc - 2);
+      s_options = retriveServerOptions(argv + 2, argc - 2);
     } catch (OPTION_EXCEPTIONS &x) {
       general_option_exception_handler_abort(x);
     }
-    if (fdu_server(options.s_listen_address, options.s_listen_port, options.s_maximum_links) < 0) {
+    if (fdu_server(s_options.s_listen_address, s_options.s_listen_port, s_options.s_maximum_links) < 0) {
       std::cerr<<"Exception occurred when executing server routine!!"<<std::endl;
-      options.outputInfo();
+      s_options.outputInfo();
       return -1;
+    }
     }
     break;
   case ASCLIENT:
-    ;
-    fdu_client_options options;
+    {
+    fdu_client_options c_options;
     try {
-      options = retriveClientOptions(argv + 2, argc - 2);
+      c_options = retriveClientOptions(argv + 2, argc - 2);
     } catch (OPTION_EXCEPTIONS &x) {
       general_option_exception_handler_abort(x);
     }
-
-    if (fdu_client(options.c_filepath, options.c_directory,
-		   options.c_server_address, options.c_server_port) < 0
+    if (fdu_client(c_options.c_filepath, c_options.c_directory,
+		   c_options.c_server_address, c_options.c_server_port) < 0
 	)
       {
 	std::cerr<<"Exception occurred when executing client routine!!"<<std::endl;
-	options.outputInfo();
+	c_options.outputInfo();
 	return -1;
       }
+    }
     break;
   default:
     std::cerr<<"Unknown mode : "<<argv[1]<<std::endl;
@@ -128,18 +135,18 @@ int main(int argc, char *argv[])
 struct fdu_server_options retriveServerOptions(char **argv, unsigned int n) noexcept(false)
 {
   fdu_server_options options = {
-    .s_address = "0.0.0.0",
-    .s_port = 58892u,
+    .s_listen_address = "0.0.0.0",
+    .s_listen_port = 58892u,
     .s_maximum_links = 3
   };
-
-  while ((auto opt = getopt(n, argv, "a:p:l:")) != -1) {
+  char opt('?');
+  while ((opt = getopt(n, argv, "a:p:l:")) != -1) {
     switch (opt) {
     case 'a':
-      options.s_address = decltype(options.s_address){optarg};
+      options.s_listen_address = decltype(options.s_listen_address){optarg};
       break;
     case 'p':
-      options.s_port = strtoul(optarg, nullptr, 10u);
+      options.s_listen_port = strtoul(optarg, nullptr, 10u);
       break;
     case 'l':
       options.s_maximum_links = strtoul(optarg, nullptr, 10u);
@@ -161,14 +168,14 @@ struct fdu_client_options retriveClientOptions(char **argv, unsigned int n) noex
   };
 
   uint8_t necessary_isgiven(0);
-
-  while ((auto opt = getopt(n, argv, "s:p:f:d:")) != -1) {
+  char opt('?');
+  while ((opt = getopt(n, argv, "s:p:f:d:")) != -1) {
     switch (opt) {
     case 's':
       options.c_server_address = decltype(options.c_server_address){optarg};
       break;
     case 'p':
-      options.c_server_port = strtoul(optarg);
+      options.c_server_port = strtoul(optarg, nullptr, 10u);
       break;
     case 'f':
       options.c_filepath = decltype(options.c_filepath){optarg};

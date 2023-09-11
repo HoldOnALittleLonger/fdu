@@ -1,5 +1,7 @@
-import "f_server.h";
-module F_SERVER;
+//import "f_server.h";
+//module F_SERVER;
+
+#include "f_server.h"
 
 const request_header &f_server::fupload::readRequest(void)
 {

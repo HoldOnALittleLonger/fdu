@@ -1,35 +1,48 @@
-module;
+//module;
+
+#ifndef _MISC_H_
+#define _MISC_H_
+
 #include <unistd.h>
 #include <fcntl.h>
 
-export module FOPS;
+//export module FOPS;
 
-import <string>;
-import <fstream>;
-import <exception>;
+//import <string>;
+//import <fstream>;
+//import <exception>;
+
+#include <string>
+#include <fstream>
+#include <exception>
+
+#include <utility>
+
 
 extern "C" {
-  int open(const char *, int);
+  int open(const char *, int, ...);
   ssize_t read(int, void *, size_t);
   ssize_t write(int, const void *, size_t);
-  offset_t lseek(int, offset_t, int);
+  off_t lseek(int, off_t, int);
   int close(int);
   int stat(const char *, struct stat *);
   int fcntl(int, int, ...);
   int dup(int);
 }
 
-export class fops {
+
+//export class fops {
+class fops {
 public:
   virtual int open(const char *path, int flags)
   {
     return ::open(path, flags);
   }
 
-  virtual std::fstream *open(const string &path, ios_base::open_mode)
+  virtual std::fstream *open(const std::string &path, std::ios_base::openmode mode)
   {
     std::fstream *f(new std::fstream);
-    f->open(path, open_mode);
+    f->open(path, mode);
     if (f->is_open()) {
       return f;
     }
@@ -52,7 +65,7 @@ public:
 
     int fd(-1);
     try {
-      fd = retrive(f);
+      fd = retrive(*f.rdbuf());
     } catch(std::bad_cast &x) {
       fd = -1;
     }
@@ -64,23 +77,23 @@ public:
     return ::dup(oldfd);
   }
 
-  virtual std::ssize_t read(int fd, char *buffer, std::size_t n)
+  virtual ssize_t read(int fd, char *buffer, std::size_t n)
   {
     return ::read(fd, buffer, n);
   }
 
-  virtual std::ssize_t read(fstream &f, char *buffer, std::size_t n)
+  virtual ssize_t read(std::fstream &f, char *buffer, std::size_t n)
   {
     f.read(buffer, n);
     return f.gcount();
   }
 
-  virtual std::ssize_t write(int fd, const char *buffer, std::size_t n)
+  virtual ssize_t write(int fd, const char *buffer, std::size_t n)
   {
     return ::write(fd, buffer, n);
   }
 
-  virtual std::ssize_t write(fstream &f, const char *buffer, std::size_t n)
+  virtual ssize_t write(std::fstream &f, const char *buffer, std::size_t n)
   {
     f.write(buffer, n);
     return f.gcount();
@@ -91,12 +104,12 @@ public:
     return ::lseek(fd, offset, whence);
   }
 
-  virtual typename std::fstream::__ostream_type seekp(std::fstream &f, typename std::fstream::off_type offtype, ios_base::seekdir whence)
+  virtual typename std::fstream::__ostream_type &seekp(std::fstream &f, typename std::fstream::off_type offtype, std::ios_base::seekdir whence)
   {
     return f.seekp(offtype, whence);
   }
 
-  virtual typename std::fstream::__istream_type seekg(std::fstream &f, typename std::fstream::off_type offtype, ios_base::seekdir whence)
+  virtual typename std::fstream::__istream_type &seekg(std::fstream &f, typename std::fstream::off_type offtype, std::ios_base::seekdir whence)
   {
     return f.seekg(offtype, whence);
   }
@@ -134,7 +147,7 @@ public:
 
   virtual std::size_t getFileLength(const std::string &path)
   {
-    return getFileLength(path.c_str);
+    return getFileLength(path.c_str());
   }
 
   void getRDFileLock(int fd)
@@ -175,19 +188,19 @@ private:
   }
 };
 
-module;
+//module;
 
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-export module NOPS;
+//export module NOPS;
 
 extern "C" {
   int socket(int, int, int);
-  int bind(int, struct sockaddr *, socklen_t);
-  int listen(int);
+  int bind(int, const struct sockaddr *, socklen_t);
+  int listen(int, int);
   int accept(int, struct sockaddr *, socklen_t *);
   int connect(int, const sockaddr *, socklen_t);
   ssize_t send(int, const void *, size_t, int);
@@ -197,7 +210,8 @@ extern "C" {
   char *inet_ntoa(struct in_addr);
 }
 
-export class nops {
+//export class nops {
+class nops {
 public:
   virtual int socket(int domain, int type, int protocol)
   {
@@ -224,22 +238,22 @@ public:
     return ::connect(socket, addr, addrlen);
   }
 
-  virtual std::ssize_t send(int socket, const void *buf, std::size_t len, int flags)
+  virtual ssize_t send(int socket, const void *buf, std::size_t len, int flags)
   {
     return ::send(socket, buf, len, flags);
   }
 
-  virtual std::ssize_t recv(int socket, void *buf, std::size_t len, int flags)
+  virtual ssize_t recv(int socket, void *buf, std::size_t len, int flags)
   {
     return ::recv(socket, buf, len, flags);
   }
 
-  virtual unint32_t htonl(unint32_t value)
+  virtual uint32_t htonl(uint32_t value)
   {
     return ::htonl(value);
   }
 
-  virtual unint32_t ntohl(unint32_t value)
+  virtual uint32_t ntohl(uint32_t value)
   {
     return ::ntohl(value);
   }
@@ -256,51 +270,60 @@ public:
 
 };
 
-module;
+//module;
 
-#include <string.h>
+#include <cstring>
 
-export module GENERAL_API;
-import FOPS;
-import NOPS;
+//export module GENERAL_API;
+//import FOPS;
+//import NOPS;
 
-export enum { FDU_DEFAULT_BUFFER_SIZE = 4096u };
+//export
+enum { FDU_DEFAULT_BUFFER_SIZE = 4096u };
 
 //  is-a
-export class general_api : public fops, public nops { };
+//export
+class general_api : public fops, public nops { };
 
-export module REQUEST_RESPODING;
+//export module REQUEST_RESPODING;
 
-export enum { FP_LENGTH = 256 };
+//export
+enum { FP_LENGTH = 256 };
 
-export enum {
+//export
+enum {
   FDU_FILE_READY,
   FDU_FILE_NOEXIST
 };
 
-export request_header {
+//export
+struct request_header {
   std::size_t fp_length;
   char file_path[FP_LENGTH];
 };
 
-export respoding_header {
+//export
+struct respoding_header {
   std::size_t file_length;
   int state;  //  FDU_FILE_READY | FDU_FILE_NOEXIST
 };
 
-module;
+//module;
 
 #include <cstdlib>
 
-export module GENERIC_IPV4_TCP;
-import GENERICAL_API;
-import <memory>;  //  RAII
+//export module GENERIC_IPV4_TCP;
+//import GENERICAL_API;
+//import <memory>;  //  RAII
+
+#include <memory>
 
 extern "C" {
   void *malloc(size_t);
 }
 
-export class generic_ipv4_tcp final : private generial_api {
+//export class generic_ipv4_tcp final : private general_api {
+class generic_ipv4_tcp final : private general_api {
  public:
   
   enum GIP4TCP_ERROR {
@@ -311,8 +334,8 @@ export class generic_ipv4_tcp final : private generial_api {
   generic_ipv4_tcp() noexcept(false)
   {
     _port = 0;
-    _ipv4_addr_str = new std::string;
-    _ipv4_addr = malloc(sizeof(struct sockaddr));
+    _ipv4_addr_str = std::move(decltype(_ipv4_addr_str){new std::string});
+    _ipv4_addr = static_cast<decltype(_ipv4_addr)>(malloc(sizeof(struct sockaddr)));
     if (!_ipv4_addr)
       throw GIP4TCP_ERR_CONSTRUCT;
   }
@@ -324,7 +347,7 @@ export class generic_ipv4_tcp final : private generial_api {
 
   bool setAddress(const std::string &netaddr)
   {
-    struct sockaddr_in *ipv4_addr(static_cast<struct sockaddr_in *>(_ipv4_addr));
+    struct sockaddr_in *ipv4_addr((struct sockaddr_in *)_ipv4_addr);
     if (!inet_aton(netaddr.c_str(), &ipv4_addr->sin_addr))
       return false;
     *_ipv4_addr_str = netaddr;
@@ -349,7 +372,7 @@ export class generic_ipv4_tcp final : private generial_api {
   void setPort(unsigned long vport)
   {
     _port = vport;
-    static_cast<struct sockaddr_in *>(_ipv4_addr)->sin_port = htonl(_port);
+    ((struct sockaddr_in *)_ipv4_addr)->sin_port = htonl(_port);
   }
 
   auto getPort(void) const
@@ -357,25 +380,25 @@ export class generic_ipv4_tcp final : private generial_api {
     return _port;
   }
 
-  generic_ipv4_tcp(const decltype(*this) &robj)
+  generic_ipv4_tcp(const generic_ipv4_tcp &robj)
   {
     __do_copy(robj);
   }
 
-  generic_ipv4_tcp(decltype(*this) &&robj)
+  generic_ipv4_tcp(generic_ipv4_tcp &&robj)
   {
-    __do_move(robj);
+    __do_move(std::forward<generic_ipv4_tcp &&>(robj));
   }
 
-  generic_ipv4_tcp &operator=(const decltype(*this) &robj)
+  generic_ipv4_tcp &operator=(const generic_ipv4_tcp &robj)
   {
     __do_copy(robj);
     return *this;
   }
 
-  generic_ipv4_tcp &operator=(decltype(*this) &&robj) noexcept
+  generic_ipv4_tcp &operator=(generic_ipv4_tcp &&robj) noexcept
   {
-    __do_move(robj);
+    __do_move(std::forward<generic_ipv4_tcp &&>(robj));
     return *this;
   }
 
@@ -384,17 +407,17 @@ export class generic_ipv4_tcp final : private generial_api {
   std::unique_ptr<std::string> _ipv4_addr_str;
   unsigned long _port;  
 
-  void __do_copy(const decltype(*this) &from)
+  void __do_copy(const generic_ipv4_tcp &from)
   {
     *_ipv4_addr = *from._ipv4_addr;
     *_ipv4_addr_str = *from._ipv4_addr_str;
     _port = from._port;
   }
 
-  void __do_move(decltype(*this) &&from) noexcept
+  void __do_move(generic_ipv4_tcp &&from) noexcept
   {
     _ipv4_addr = from._ipv4_addr;
-    _ipv4_addr_str = from._ipv4_addr_str;
+    _ipv4_addr_str = std::forward<decltype(_ipv4_addr_str) &&>(from._ipv4_addr_str);
     _port = from._port;
 
     from._ipv4_addr = nullptr;
@@ -402,3 +425,5 @@ export class generic_ipv4_tcp final : private generial_api {
     from._port = 0;
   }
 };
+
+#endif

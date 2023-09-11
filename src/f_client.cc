@@ -1,7 +1,9 @@
-import "f_client.h";
-import "misc.h";
+//import "f_client.h";
+//import "misc.h";
 
-module F_CLIENT;
+//module F_CLIENT;
+
+#include "f_client.h"
 
 typename f_client::fdownload_t
 f_client::connect(int domain, int type, int protocol) noexcept(false)

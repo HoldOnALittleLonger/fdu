@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <cstddef>
 
 extern "C" {
   int sigaction(int, const struct sigaction *, struct sigaction *);
@@ -12,22 +13,23 @@ static void sigint_action(int v)
   return;
 }
 
-inline 
-static int setSIGINTAction(void)
+static inline
+int setSIGINTAction(void)
 {
-  struct sigaction int_act = {
-    .sa_handler = sigint_action,
-    .sa_action = NULL,
-    .sa_flags = 0,
-  };
+  struct sigaction int_act;
+  int_act.sa_handler = sigint_action;
+  int_act.sa_sigaction = nullptr;
+  int_act.sa_flags = 0;
   sigemptyset(&int_act.sa_mask);
   sigaddset(&int_act.sa_mask, SIGINT);
 
   return sigaction(SIGINT, &int_act, NULL);
 }
 
-import "fdu_cs.h";
-import F_SERVER;
+//import "fdu_cs.h";
+//import F_SERVER;
+#include "fdu_cs.h"
+#include "f_server.h"
 
 //  thread will deatched.
 static void fdu_server_worker(typename f_server::fupload_t upload)

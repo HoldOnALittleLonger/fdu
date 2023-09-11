@@ -1,15 +1,22 @@
-module;
+//module;
 
-export module F_CLIENT;
-import GENERAL_API;
-import GENERIC_IPV4_TCP;
+//export module F_CLIENT;
+//import GENERAL_API;
+//import GENERIC_IPV4_TCP;
 
-import <cstddef>;
-import <cstdlib>;
-import <cstring>;
-import <memory>;
+//import <cstddef>;
+//import <cstdlib>;
+//import <cstring>;
+//import <memory>;
 
-export class f_client final : private general_api {
+#ifndef _F_CLIENT_H_
+#define _F_CLIENT_H_
+
+#include "misc.h"
+#include <cstddef>
+
+//export 
+class f_client final : private general_api {
  public:
 
   enum F_CLIENT_ERROR {
@@ -44,7 +51,7 @@ export class f_client final : private general_api {
     }
     ~fdownload()
       {
-	releaseLink();
+ 	releaseLink();
 	delete[] _download_buffer;
       }
 
@@ -278,3 +285,5 @@ export class f_client final : private general_api {
   std::unique_ptr<generic_ipv4_tcp> _gip4tcp;
   LinkType _linktype;
 };
+
+#endif

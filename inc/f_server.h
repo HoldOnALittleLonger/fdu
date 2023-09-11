@@ -1,13 +1,20 @@
-module;
+//module;
 
-export module F_SERVER;
-import GENERAL_API;
-import GENERIC_IPV4_TCP;
+//export module F_SERVER;
+//import GENERAL_API;
+//import GENERIC_IPV4_TCP;
 
-import <cstddef>;
-import <memory>;
+//import <cstddef>;
+//import <memory>;
 
-export class f_server final : private general_api {
+#ifndef _F_SERVER_H_
+#define _F_SERVER_H_
+
+#include <cstddef>
+#include "misc.h"
+
+//export 
+class f_server final : private general_api {
  public:
 
   class fupload final : private general_api {
@@ -236,3 +243,6 @@ export class f_server final : private general_api {
   std::unique_ptr<generic_ipv4_tcp> _gip4tcp;
   LinkType _type;
 };
+
+
+#endif

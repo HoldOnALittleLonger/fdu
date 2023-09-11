@@ -1,5 +1,8 @@
-import "fdu_cs.h";
-import F_CLIENT;
+//import "fdu_cs.h";
+//import F_CLIENT;
+
+#include "fdu_cs.h"
+#include "f_client.h"
 
 int fdu_client(const std::string &file_path_fully, const std::string &download_directory,
 	       const std::string &server_address, unsigned long server_port)
