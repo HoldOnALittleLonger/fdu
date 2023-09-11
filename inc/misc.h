@@ -2,8 +2,6 @@ module;
 #include <unistd.h>
 #include <fcntl.h>
 
-
-
 export module FOPS;
 
 import <string>;
