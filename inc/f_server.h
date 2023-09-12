@@ -54,16 +54,16 @@ class f_server final : private general_api {
 
     fupload(fupload &&robj)
       {
-	__doMove(robj);
+	__doMove(std::forward<fupload &&>(robj));
       }
 
     fupload &operator=(fupload &&robj)
       {
-	__doMove(robj);
+	__doMove(std::forward<fupload &&>(robj));
 	return *this;
       }
 
-    bool operator bool()
+    operator bool()
     {
       return _communicateSocket >= 0;
     }
@@ -100,7 +100,7 @@ class f_server final : private general_api {
       if (robj._upload_buffer) {
 	try {
 	  __allocateUploadBuffer();
-	} catch (std::bad_alloca &x) {
+	} catch (std::bad_alloc &x) {
 	  throw FUPLOAD_ERR_COPY;
 	}
 	memcpy(_upload_buffer, robj._upload_buffer, _ub_size);
@@ -142,8 +142,9 @@ class f_server final : private general_api {
 
 
   enum F_SERVER_ERROR {
-    F_SERVER_ERR_CONSTRUCT = 1
+    F_SERVER_ERR_CONSTRUCT = 1,
     F_SERVER_ERR_UNKNOWN_LINK,
+    F_SERVER_ERR_SOCKET,
     F_SERVER_ERR_BIND
   };
   using f_server_err = F_SERVER_ERROR;
@@ -156,7 +157,7 @@ class f_server final : private general_api {
   f_server(unsigned short max_links) noexcept(false) : _maximum_links(max_links), _type(UNKNOWN)
     {
       try {
-	_gip4tcp = new generic_ipv4_tcp;
+	_gip4tcp = std::move(decltype(_gip4tcp){new generic_ipv4_tcp});
       } catch(...) {
 	throw F_SERVER_ERR_CONSTRUCT;
       }
@@ -168,7 +169,7 @@ class f_server final : private general_api {
       (void)close(_listenSocket);
     }
 
-  bool setListenAddressIPv4(const string &netaddr)
+  bool setListenAddressIPv4(const std::string &netaddr)
   {
     return _gip4tcp->setAddress(netaddr);
   }
@@ -187,7 +188,7 @@ class f_server final : private general_api {
   {
     _maximum_links = n;
   }
-  void getMaximumLinks(void) const
+  unsigned short getMaximumLinks(void) const
   {
     return _maximum_links;
   }

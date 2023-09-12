@@ -9,32 +9,34 @@ int fdu_client(const std::string &file_path_fully, const std::string &download_d
 {
   std::unique_ptr<f_client> local_client_ptr(nullptr);  //  RAII
   try {
-    local = new f_client;
+    local_client_ptr = std::move(decltype(local_client_ptr){new f_client});
   } catch (std::bad_alloc &x) {
-    cerr<<"Allocate memory failed."<<endl;
+    std::cerr<<"Allocate memory failed."<<std::endl;
     return -1;
   } catch (f_client::f_client_err &x) {
-    cerr<<"Generate client object was failed."<<endl;
+    std::cerr<<"Generate client object was failed."<<std::endl;
     return -1;
   }
 
   int ret(-1);
-  if (!local->setPeerAddressIPv4(server_address))
-    goto fdu_client_exit;
-  local->setPeerPort(server_port);
+  if (!local_client_ptr->setPeerAddressIPv4(server_address))
+    return ret;
+  local_client_ptr->setPeerPort(server_port);
   
   std::unique_ptr<typename f_client::fdownload_t> downloadPtr(nullptr);
   //  copy and construct both throw,so have to deal with these exceptions.
   try {
-    downloadPtr = new typename f_client::fdownload_t(local->connect(AF_INET, SOCK_STREAM, IPPROTO_TCP));
+    downloadPtr = std::move(decltype(downloadPtr)
+			    {new typename f_client::fdownload_t(local_client_ptr->
+								connect(AF_INET, SOCK_STREAM, IPPROTO_TCP))});
   } catch (std::bad_alloc &x) {
-    cerr<<"Allocate memory failed."<<endl;
+    std::cerr<<"Allocate memory failed."<<std::endl;
     return -1;
-  } catch (f_client_err &x) {
-    cerr<<"Connect to server was failed."<<endl;
+  } catch (typename f_client::f_client_err &x) {
+    std::cerr<<"Connect to server was failed."<<std::endl;
     return -1;
   } catch (typename f_client::fdownload::fdown_err &x) {
-    cerr<<"Generate local download object was failed."<<endl;
+    std::cerr<<"Generate local download object was failed."<<std::endl;
     return -1;
   }
 
@@ -43,17 +45,17 @@ int fdu_client(const std::string &file_path_fully, const std::string &download_d
   if (!downloadPtr->checkFileIsExisted()) {
     ret = downloadPtr->getFile();
     if (ret != 0) {
-      cerr<<"Unknown error occurred when downloading."<<endl;
-      cerr<<"Download path : "<<download_directory<<endl;
-      cerr<<"Dentry : "<<downloadPtr->getFileName()<<endl;
-      cerr<<"Required file : "<<file_path_fully<<endl;
-      cerr<<"Error Code : "<<ret<<endl;
+      std::cerr<<"Unknown error occurred when downloading."<<std::endl;
+      std::cerr<<"Download path : "<<download_directory<<std::endl;
+      std::cerr<<"Dentry : "<<downloadPtr->getFileName()<<std::endl;
+      std::cerr<<"Required file : "<<file_path_fully<<std::endl;
+      std::cerr<<"Error Code : "<<ret<<std::endl;
       ret = -1;
     } else {
       ret = 0;
     }
   } else {
-    cerr<<"The file : "<<downloadPtr->getFileName()<<" is existed."<<endl;
+    std::cerr<<"The file : "<<downloadPtr->getFileName()<<" is existed."<<std::endl;
   }
 
   return ret;

@@ -27,7 +27,7 @@ responding_header f_server::fupload::checkFile(const request_header &r)
 
 unsigned short f_server::fupload::sendFile(responding_header &responding, const request_header &request)
 {
-  int retv(FUPLOAD_ERR_FILE);
+  int retv(FUPLOAD_ERR_FILE_NOEXIST);
  __cannt_satisfy_request:
   //  if file is not existed,then return responding and exit function
   if (responding.state != FDU_FILE_READY) {
@@ -45,7 +45,7 @@ unsigned short f_server::fupload::sendFile(responding_header &responding, const 
     }
 
 
-  std::fstream *f(open(std::string{request->file_path)), ios_base::in | ios_base::binary);
+  std::fstream *f(open(std::string{request.file_path}, std::ios_base::in | std::ios_base::binary));
   if (!f) {
     responding.state = FDU_FILE_NOEXIST;
     retv = FUPLOAD_ERR_OPEN;
@@ -54,7 +54,7 @@ unsigned short f_server::fupload::sendFile(responding_header &responding, const 
 
   int fstream_fd(retriveFdForFstream(*f));
   getRDFileLock(fstream_fd);
-  std::ssize_t readed(0);
+  ssize_t readed(0);
   while ((readed = read(*f, _upload_buffer, _ub_size)) > 0)
     send(_communicateSocket, _upload_buffer, readed, 0);
   releaseFileLock(fstream_fd);
@@ -62,8 +62,8 @@ unsigned short f_server::fupload::sendFile(responding_header &responding, const 
   return 0;
 }
 
-fupload_t f_server::accept(void)
+f_server::fupload_t f_server::accept(void)
 {
-  int peer(accept(_listenSocket, NULL, NULL));
+  int peer(general_api::accept(_listenSocket, NULL, NULL));
   return fupload_t(peer);
 }

@@ -48,19 +48,19 @@ int fdu_server(const std::string &listen_address, unsigned long port, unsigned i
 
   std::unique_ptr<f_server> local_server_ptr(nullptr);  //  f_server has throw because TCP/IP resource has throw
   try {
-    local_server_ptr = new f_server(maximum_links);
+    local_server_ptr = std::move(decltype(local_server_ptr){new f_server(maximum_links)});
   } catch (f_server::f_server_err &x) {
-    cerr<<"Generate server object was failed."<<endl;
+    std::cerr<<"Generate server object was failed."<<std::endl;
     return -1;
   }
 
   if (!local_server_ptr->setListenAddressIPv4(listen_address)) {
-    cerr<<"IPv4 Address is wrong."<<endl;
+    std::cerr<<"IPv4 Address is wrong."<<std::endl;
     return -1;
   }
   local_server_ptr->setListenPort(port);
   if (local_server_ptr->init() != 0) {
-    cerr<<"Server initialization was failed."<<endl;
+    std::cerr<<"Server initialization was failed."<<std::endl;
     return -1;
   }
 
@@ -68,11 +68,11 @@ int fdu_server(const std::string &listen_address, unsigned long port, unsigned i
 
   //  server have to handle SIGINT,that will let server stop.
   if (setSIGINTAction() < 0) {
-    cerr<<"Install SIGINT action was failed."<<endl;
+    std::cerr<<"Install SIGINT action was failed."<<std::endl;
     return -1;
   }
 
-  fdu_server_loop_end_condition(0);
+  fdu_server_loop_end_condition = 0;
   do {
     typename f_server::fupload_t upload(local_server_ptr->accept());  //  fupload(int) no throw
                                                                       //  but there will call to copy-constructor

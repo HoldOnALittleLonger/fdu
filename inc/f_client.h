@@ -30,7 +30,7 @@ class f_client final : private general_api {
   public:
     
     enum FDOWNLOAD_ERROR {
-      FDOWNLOAD_ERR_CONSTRUCT = 1
+      FDOWNLOAD_ERR_CONSTRUCT = 1,
       FDOWNLOAD_ERR_MEMORY,
       FDOWNLOAD_ERR_COPY,
       FDOWNLOAD_ERR_RESPOND,
@@ -41,9 +41,9 @@ class f_client final : private general_api {
 
     explicit fdownload(int sockfd) noexcept(false) : _socket(sockfd)
     {
-      _filename = new std::string;
-      _directory = new std::string;
-      _dentry = new std::string;
+      _filename = std::move(decltype(_filename){new std::string});
+      _directory = std::move(decltype(_directory){new std::string});
+      _dentry = std::move(decltype(_dentry){new std::string});
       _db_size = FDU_DEFAULT_BUFFER_SIZE;
       _download_buffer = nullptr;
       if (!_filename || !_directory || !_dentry)
@@ -71,7 +71,7 @@ class f_client final : private general_api {
 	  break;
 	}
       }
-      std::size_t displacement(fileanme_with_slash - filename.begin());
+      std::size_t displacement(filename_with_slash - filename.begin());
       std::size_t length(filename.end() - filename_with_slash);
       std::string the_file(filename.substr(displacement, length));
       *_dentry = *_directory + the_file;
@@ -104,7 +104,7 @@ class f_client final : private general_api {
 
     bool checkFileIsExisted(void)
     {
-      return getFileLength(*dentry) != 0;
+      return getFileLength(*_dentry) != 0;
     }
     
     fdownload(const fdownload &robj) noexcept(false)
@@ -112,7 +112,7 @@ class f_client final : private general_api {
 	__doCopy(robj);
       }
 
-    fdownload &operator=(const fdownload &robj) noexcept(false);
+    fdownload &operator=(const fdownload &robj) noexcept(false)
       {
 	if (this == &robj)
 	  return *this;
@@ -122,16 +122,16 @@ class f_client final : private general_api {
 
     fdownload(fdownload &&robj)
       {
-	__doMove(robj);
+	__doMove(std::forward<fdownload &&>(robj));
       }
 
     fdownload &operator=(fdownload &&robj)
       {
-	__doMove(robj);
+	__doMove(std::forward<fdownload &&>(robj));
 	return *this;
       }
 
-    bool operator bool()
+    operator bool()
     {
       return _socket >= 0;
     }
@@ -180,18 +180,15 @@ class f_client final : private general_api {
 	releaseLink();
       _socket = dup(robj._socket);
 
-      _filename = robj._filename;
-      _directory = robj._directory;
-      _dentry = robj._dentry;
+      _filename = std::move(robj._filename);
+      _directory = std::move(robj._directory);
+      _dentry = std::move(robj._dentry);
       _db_size = robj._db_size;
       if (_download_buffer)
 	delete[] _download_buffer;
       _download_buffer = robj._download_buffer;
 
       robj.releaseLink();
-      robj._filename = nullptr;
-      robj._directory = nullptr;
-      robj._dentry = nullptr;
       robj._db_size = 0;
       robj._download_buffer = nullptr;
     }
@@ -220,7 +217,7 @@ class f_client final : private general_api {
   f_client() noexcept(false)
     {
       try {
-	_gip4tcp = new generic_ipv4_tcp;
+	_gip4tcp = std::move(decltype(_gip4tcp){new generic_ipv4_tcp});
       } catch (...) {
 	throw F_CLIENT_ERR_CONSTRUCT;
       }
@@ -276,7 +273,7 @@ class f_client final : private general_api {
   //  move constructor
   explicit f_client(f_client &&robj)
     {
-      _gip4tcp = robj._gip4tcp;
+      _gip4tcp = std::move(robj._gip4tcp);
       _linktype = robj._linktype;
       robj._linktype = UNKNOWN;
     }

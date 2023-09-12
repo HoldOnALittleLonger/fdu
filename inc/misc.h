@@ -303,7 +303,7 @@ struct request_header {
 };
 
 //export
-struct respoding_header {
+struct responding_header {
   std::size_t file_length;
   int state;  //  FDU_FILE_READY | FDU_FILE_NOEXIST
 };

@@ -23,10 +23,6 @@ static void fdu_help(void)
 
 static FDU_MODE which_mode_now(char **argv, unsigned int n)
 {
-  if (n < 2) {
-    fdu_help();
-    return UNKNOWN_MODE;
-  }
   if (strcmp(argv[1], "asserver") == 0)
     return ASSERVER;
   else if (strcmp(argv[1], "asclient") == 0)
@@ -86,6 +82,12 @@ void general_option_exception_handler_abort(OPTION_EXCEPTIONS &x)
 
 int main(int argc, char *argv[])
 {
+  if (argc < 2) {
+    std::cerr<<"Argument is too few!"<<std::endl;
+    fdu_help();
+    return -1;
+  }
+
   FDU_MODE fdu_mode(which_mode_now(argv, argc));
   switch (fdu_mode) {
   case ASSERVER:
