@@ -5,7 +5,7 @@
 
 const request_header &f_server::fupload::readRequest(void)
 {
-  static request_header rh = {0};
+  static request_header rh = {0};  //  static is not multi-thread safe
   memset(rh.file_path, '\0', FP_LENGTH);
   recv(_communicateSocket, &rh.fp_length, sizeof(std::size_t), 0);
   if (rh.fp_length > 0 && rh.fp_length < FP_LENGTH)

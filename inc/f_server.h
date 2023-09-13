@@ -157,7 +157,7 @@ class f_server final : private general_api {
   f_server(unsigned short max_links) noexcept(false) : _maximum_links(max_links), _type(UNKNOWN)
     {
       try {
-	_gip4tcp = std::move(decltype(_gip4tcp){new generic_ipv4_tcp});
+	      _gip4tcp.reset(new generic_ipv4_tcp);
       } catch(...) {
 	throw F_SERVER_ERR_CONSTRUCT;
       }
@@ -178,7 +178,7 @@ class f_server final : private general_api {
     return _gip4tcp->setAddress(netaddr);
   }
 
-  void setListenPort(unsigned short vport)
+  void setListenPort(unsigned long vport)
   {
     _gip4tcp->setPort(vport);
     _type = IPV4;

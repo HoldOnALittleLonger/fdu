@@ -41,9 +41,9 @@ class f_client final : private general_api {
 
     explicit fdownload(int sockfd) noexcept(false) : _socket(sockfd)
     {
-      _filename = std::move(decltype(_filename){new std::string});
-      _directory = std::move(decltype(_directory){new std::string});
-      _dentry = std::move(decltype(_dentry){new std::string});
+      _filename.reset(new std::string);
+      _directory.reset(new std::string);
+      _dentry.reset(new std::string);
       _db_size = FDU_DEFAULT_BUFFER_SIZE;
       _download_buffer = nullptr;
       if (!_filename || !_directory || !_dentry)
@@ -217,7 +217,7 @@ class f_client final : private general_api {
   f_client() noexcept(false)
     {
       try {
-	_gip4tcp = std::move(decltype(_gip4tcp){new generic_ipv4_tcp});
+	_gip4tcp.reset(new generic_ipv4_tcp);
       } catch (...) {
 	throw F_CLIENT_ERR_CONSTRUCT;
       }

@@ -11,6 +11,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <exception>
+#include <arpa/inet.h>
 
 enum FDU_MODE { ASSERVER, ASCLIENT, UNKNOWN_MODE };
 
@@ -33,7 +34,7 @@ static FDU_MODE which_mode_now(char **argv, unsigned int n)
 
 struct fdu_server_options {
   std::string s_listen_address;
-  unsigned int s_listen_port;
+  unsigned long s_listen_port;
   unsigned short s_maximum_links;
   void outputInfo(void)
   {
@@ -45,7 +46,7 @@ struct fdu_server_options {
 
 struct fdu_client_options {
   std::string c_server_address;
-  unsigned int c_server_port;
+  unsigned long c_server_port;
   std::string c_filepath;
   std::string c_directory;
   void outputInfo(void)
@@ -89,12 +90,19 @@ int main(int argc, char *argv[])
   }
 
   FDU_MODE fdu_mode(which_mode_now(argv, argc));
+
+#ifdef __DEBUG
+  for (auto i(0); i < argc; ++i)
+    std::cerr<<argv[i]<<" ";
+  std::cerr<<std::endl;
+#endif
+
   switch (fdu_mode) {
   case ASSERVER:
     {
     fdu_server_options s_options;
     try {
-      s_options = retriveServerOptions(argv + 2, argc - 2);
+      s_options = retriveServerOptions(argv + 1, argc - 1);
     } catch (OPTION_EXCEPTIONS &x) {
       general_option_exception_handler_abort(x);
     }
@@ -109,7 +117,7 @@ int main(int argc, char *argv[])
     {
     fdu_client_options c_options;
     try {
-      c_options = retriveClientOptions(argv + 2, argc - 2);
+      c_options = retriveClientOptions(argv + 1, argc - 1);
     } catch (OPTION_EXCEPTIONS &x) {
       general_option_exception_handler_abort(x);
     }

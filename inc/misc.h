@@ -18,6 +18,10 @@
 
 #include <utility>
 
+#ifdef __DEBUG
+#include <iostream>
+#endif
+
 
 extern "C" {
   int open(const char *, int, ...);
@@ -248,14 +252,24 @@ public:
     return ::recv(socket, buf, len, flags);
   }
 
-  virtual uint32_t htonl(uint32_t value)
+  virtual uint32_t htonl(uint32_t value) const
   {
     return ::htonl(value);
   }
 
-  virtual uint32_t ntohl(uint32_t value)
+  virtual uint16_t htons(uint16_t value) const
+  {
+    return ::htons(value);
+  }
+
+  virtual uint32_t ntohl(uint32_t value) const
   {
     return ::ntohl(value);
+  }
+
+  virtual uint16_t ntohs(uint16_t value) const
+  {
+    return ::ntohs(value);
   }
 
   virtual int inet_aton(const char *cp, struct in_addr *in)
@@ -334,10 +348,11 @@ class generic_ipv4_tcp final : private general_api {
   generic_ipv4_tcp() noexcept(false)
   {
     _port = 0;
-    _ipv4_addr_str = std::move(decltype(_ipv4_addr_str){new std::string});
+    _ipv4_addr_str.reset(new std::string);
     _ipv4_addr = static_cast<decltype(_ipv4_addr)>(malloc(sizeof(struct sockaddr)));
     if (!_ipv4_addr)
       throw GIP4TCP_ERR_CONSTRUCT;
+    ((struct sockaddr_in *)_ipv4_addr)->sin_family = AF_INET;  //  IPv4 TCP default family.
   }
 
   ~generic_ipv4_tcp()
@@ -369,10 +384,10 @@ class generic_ipv4_tcp final : private general_api {
     return *_ipv4_addr;
   }
 
-  void setPort(unsigned long vport)
+  void setPort(unsigned int vport)
   {
     _port = vport;
-    ((struct sockaddr_in *)_ipv4_addr)->sin_port = htonl(_port);
+    ((struct sockaddr_in *)_ipv4_addr)->sin_port = htons(_port);
   }
 
   auto getPort(void) const
@@ -405,7 +420,7 @@ class generic_ipv4_tcp final : private general_api {
  private:
   struct sockaddr *_ipv4_addr;
   std::unique_ptr<std::string> _ipv4_addr_str;
-  unsigned long _port;  
+  unsigned int _port;  
 
   void __do_copy(const generic_ipv4_tcp &from)
   {
@@ -417,11 +432,10 @@ class generic_ipv4_tcp final : private general_api {
   void __do_move(generic_ipv4_tcp &&from) noexcept
   {
     _ipv4_addr = from._ipv4_addr;
-    _ipv4_addr_str = std::forward<decltype(_ipv4_addr_str) &&>(from._ipv4_addr_str);
+    _ipv4_addr_str = std::forward<decltype(_ipv4_addr_str) &&>(from._ipv4_addr_str);  //  call std::unique_ptr::operator=(&&)
     _port = from._port;
 
     from._ipv4_addr = nullptr;
-    from._ipv4_addr_str = nullptr;
     from._port = 0;
   }
 };

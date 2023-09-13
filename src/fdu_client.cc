@@ -9,7 +9,7 @@ int fdu_client(const std::string &file_path_fully, const std::string &download_d
 {
   std::unique_ptr<f_client> local_client_ptr(nullptr);  //  RAII
   try {
-    local_client_ptr = std::move(decltype(local_client_ptr){new f_client});
+    local_client_ptr.reset(new f_client);
   } catch (std::bad_alloc &x) {
     std::cerr<<"Allocate memory failed."<<std::endl;
     return -1;
@@ -22,13 +22,12 @@ int fdu_client(const std::string &file_path_fully, const std::string &download_d
   if (!local_client_ptr->setPeerAddressIPv4(server_address))
     return ret;
   local_client_ptr->setPeerPort(server_port);
-  
+
   std::unique_ptr<typename f_client::fdownload_t> downloadPtr(nullptr);
   //  copy and construct both throw,so have to deal with these exceptions.
   try {
-    downloadPtr = std::move(decltype(downloadPtr)
-			    {new typename f_client::fdownload_t(local_client_ptr->
-								connect(AF_INET, SOCK_STREAM, IPPROTO_TCP))});
+    downloadPtr.reset(new typename f_client::fdownload_t(local_client_ptr->
+							 connect(AF_INET, SOCK_STREAM, IPPROTO_TCP)));
   } catch (std::bad_alloc &x) {
     std::cerr<<"Allocate memory failed."<<std::endl;
     return -1;

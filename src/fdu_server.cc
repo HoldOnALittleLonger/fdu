@@ -48,7 +48,7 @@ int fdu_server(const std::string &listen_address, unsigned long port, unsigned i
 
   std::unique_ptr<f_server> local_server_ptr(nullptr);  //  f_server has throw because TCP/IP resource has throw
   try {
-    local_server_ptr = std::move(decltype(local_server_ptr){new f_server(maximum_links)});
+    local_server_ptr.reset(new f_server(maximum_links));
   } catch (f_server::f_server_err &x) {
     std::cerr<<"Generate server object was failed."<<std::endl;
     return -1;

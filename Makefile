@@ -2,7 +2,7 @@ all: fdu
 vpath %.h inc/
 vpath %.cc src/
 
-CXXFLAGS := -Wall -std=c++20 -Iinc/
+CXXFLAGS := -Wall -g -D__DEBUG -std=c++20 -Iinc/
 
 fdu: fdu.o fdu_server.o fdu_client.o f_server.o f_client.o
 	g++ $(CXXFLAGS) -o $@ $^ -lpthread
