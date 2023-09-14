@@ -8,7 +8,6 @@
 
 #include "fdu_cs.h"
 #include <cstring>
-#include <iostream>
 #include <cstdlib>
 #include <exception>
 #include <arpa/inet.h>

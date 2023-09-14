@@ -13,7 +13,10 @@
 #define _F_CLIENT_H_
 
 #include "misc.h"
+
 #include <cstddef>
+#include <cstring>
+#include <utility>
 
 //export 
 class f_client final : private general_api {
@@ -65,16 +68,18 @@ class f_client final : private general_api {
     void setFileName(const std::string &filename)
     {
       auto filename_with_slash(filename.begin());
+      unsigned short is_no_slash(1);
       for (auto it(filename.end()); it >= filename.begin(); --it) {
 	if (*it == '/') {
 	  filename_with_slash = it;
+	  is_no_slash = 0;
 	  break;
 	}
       }
       std::size_t displacement(filename_with_slash - filename.begin());
       std::size_t length(filename.end() - filename_with_slash);
       std::string the_file(filename.substr(displacement, length));
-      *_dentry = *_directory + the_file;
+      *_dentry = (is_no_slash) ? *_directory + "/" + the_file : *_directory + the_file;
       *_filename = filename;
     }
 
@@ -108,6 +113,8 @@ class f_client final : private general_api {
     }
     
     fdownload(const fdownload &robj) noexcept(false)
+      : _socket(-1), _db_size(FDU_DEFAULT_BUFFER_SIZE),
+      _download_buffer(nullptr)
       {
 	__doCopy(robj);
       }
@@ -121,6 +128,8 @@ class f_client final : private general_api {
       }
 
     fdownload(fdownload &&robj)
+      : _socket(-1), _db_size(FDU_DEFAULT_BUFFER_SIZE),
+      _download_buffer(nullptr)
       {
 	__doMove(std::forward<fdownload &&>(robj));
       }
@@ -140,7 +149,8 @@ class f_client final : private general_api {
     {
       if(_socket < 0)  //  close a fd which is less than 0 is nonsence.
 	return;
-      shutdown(_socket, SHUT_RDWR);
+//      shutdown(_socket, SHUT_RDWR);
+      (void)close(_socket);
       _socket = -1;
     }
 
@@ -183,7 +193,8 @@ class f_client final : private general_api {
       _filename = std::move(robj._filename);
       _directory = std::move(robj._directory);
       _dentry = std::move(robj._dentry);
-      _db_size = robj._db_size;
+
+      setDownloadBufferSize(robj._db_size);
       if (_download_buffer)
 	delete[] _download_buffer;
       _download_buffer = robj._download_buffer;
@@ -196,7 +207,6 @@ class f_client final : private general_api {
     void __allocateDownloadBuffer(void) noexcept(false)
     {
       char *tempPtr = new char[_db_size];
-
       //  rcu
       if (!tempPtr)
 	throw std::bad_alloc();
@@ -214,7 +224,7 @@ class f_client final : private general_api {
     UNKNOWN = 173
   };
 
-  f_client() noexcept(false)
+  f_client() noexcept(false) : _gip4tcp(nullptr)
     {
       try {
 	_gip4tcp.reset(new generic_ipv4_tcp);
@@ -223,7 +233,7 @@ class f_client final : private general_api {
       }
       _linktype = UNKNOWN;
     }
-  ~f_client() {}
+  ~f_client() {}  //  smart pointer,we need anything to do
 
   bool setPeerAddressIPv4(const char *netaddr)
   {
@@ -266,21 +276,43 @@ class f_client final : private general_api {
   //  copy constructor
   f_client(const f_client &robj)
     {
-      *_gip4tcp = *robj._gip4tcp;
-      _linktype = robj._linktype;
+      __doCopy(robj);
     }
 
   //  move constructor
   explicit f_client(f_client &&robj)
     {
-      _gip4tcp = std::move(robj._gip4tcp);
-      _linktype = robj._linktype;
-      robj._linktype = UNKNOWN;
+      __doMove(std::forward<f_client &&>(robj));
+    }
+
+  f_client &operator=(const f_client &robj)
+    {
+      __doCopy(robj);
+      return *this;
+    }
+
+  f_client &operator=(f_client &&robj)
+    {
+      __doMove(std::forward<f_client &&>(robj));
+      return *this;
     }
 
  private:
   std::unique_ptr<generic_ipv4_tcp> _gip4tcp;
   LinkType _linktype;
+
+  void __doCopy(const f_client &from)
+  {
+    *_gip4tcp = *from._gip4tcp;
+    _linktype = from._linktype;
+  }
+
+  void __doMove(f_client &&from)
+  {
+    _gip4tcp = std::move(from._gip4tcp);
+    _linktype = from._linktype;
+    from._linktype = UNKNOWN;
+  }
 };
 
 #endif

@@ -32,9 +32,9 @@ int setSIGINTAction(void)
 #include "f_server.h"
 
 //  thread will deatched.
-static void fdu_server_worker(typename f_server::fupload_t upload)
+static void fdu_server_worker(typename f_server::fupload_t &&upload)
 {
-  const request_header &rh = upload.readRequest();
+  request_header rh = upload.readRequest();
   responding_header responding = upload.checkFile(rh);
   (void)upload.sendFile(responding, rh);
 }
@@ -78,7 +78,23 @@ int fdu_server(const std::string &listen_address, unsigned long port, unsigned i
                                                                       //  but there will call to copy-constructor
                                                                       //  it only throw when copy-from has buffer allocated
     worker new_worker = fdu_server_worker;
-    std::thread new_thread(new_worker, upload);
+
+    //  !! NOTE : there will calls move-constructor twice.
+    //  FIRST > std::move() called
+    //  SECOND > thread argument binding,the std::thread template request argument is
+    //           type of rvalue reference.
+    //  IF new_worker doest not require rvalue reference parameter,but std::thread still
+    //  create an object is type of rvalue reference,and use the rvalue ref to create
+    //  a new object it is copied from the rvalue object.
+    //  !!  EVEN call std::forward() to forwards argument,there is still calls move-constructor
+    //      twice.
+    //  the bug free invalid size,it because the data members has invalid value when move-constructor
+    //  is going to be called.then free memory happened memory bug.
+    //  now added member-list-initialization to move-constructor and copy-constructor to ensure
+    //  the important data members(non-smart-pointer, involved to memory allocating)
+    //  holds the valid but useless values.
+    std::thread new_thread(new_worker, std::move(upload));
+
     new_thread.detach();
   } while (!fdu_server_loop_end_condition);
 

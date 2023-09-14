@@ -15,13 +15,7 @@
 #include <string>
 #include <fstream>
 #include <exception>
-
 #include <utility>
-
-#ifdef __DEBUG
-#include <iostream>
-#endif
-
 
 extern "C" {
   int open(const char *, int, ...);
@@ -33,7 +27,6 @@ extern "C" {
   int fcntl(int, int, ...);
   int dup(int);
 }
-
 
 //export class fops {
 class fops {
@@ -56,21 +49,24 @@ public:
 
   //  __basic_file is protected member in fstream
   //  but fstream::rdbuf() could returns the object.
+  //  this method was got from network,it is useful,
+  //  class basic_fstream contains a protected member 
+  //  named _M_filebuf,and it is type of basic_filebuf.
   virtual int retriveFdForFstream(std::fstream &f)
   {
     auto retrive = [](std::filebuf &fb) -> int {
-      class helper : public std::filebuf {
+      class helper : public std::filebuf {  //  helper derived std::filebuf.
       public:
-	int handle(void) { return _M_file.fd(); }
-      };
+	int handle(void) { return _M_file.fd(); }  //  std::filebuf::_M_file is a protected member
+      };                                           //  method fd() is declared in class __basic_file.
 
-      return dynamic_cast<helper&>(fb).handle();
-    };
+      return dynamic_cast<helper&>(fb).handle();   //  convert base class ref to derived class ref,
+    };                                             //  it is OK.(base class ref could refs derived class object)
 
     int fd(-1);
     try {
       fd = retrive(*f.rdbuf());
-    } catch(std::bad_cast &x) {
+    } catch(std::bad_cast &x) {  //  handle dynamic_cast might throw
       fd = -1;
     }
     return fd;
@@ -108,11 +104,13 @@ public:
     return ::lseek(fd, offset, whence);
   }
 
+  //  pack ostream::seekp
   virtual typename std::fstream::__ostream_type &seekp(std::fstream &f, typename std::fstream::off_type offtype, std::ios_base::seekdir whence)
   {
     return f.seekp(offtype, whence);
   }
 
+  //  pack istream::seekg
   virtual typename std::fstream::__istream_type &seekg(std::fstream &f, typename std::fstream::off_type offtype, std::ios_base::seekdir whence)
   {
     return f.seekg(offtype, whence);
@@ -133,6 +131,7 @@ public:
     ::close(fd);
   }
 
+  //  fops::close have to pair with fops::open
   virtual void close(std::fstream *f)
   {
     if (!f)
@@ -164,7 +163,7 @@ public:
     getFileLock(fd, F_WRLCK);
   }
 
-  //  locker always lock all 
+  //  locker always lock all (C file lock via fcntl)
   void releaseFileLock(int fd)
   {
     struct flock lock = {
@@ -185,7 +184,7 @@ private:
       .l_type = type,
       .l_whence = SEEK_SET,
       .l_start = 0,
-      .l_len = 0
+      .l_len = 0  //  let it automatically increase
     };
     fcntl(fd, F_SETLKW, &lock);
     return;
@@ -285,9 +284,6 @@ public:
 };
 
 //module;
-
-#include <cstring>
-
 //export module GENERAL_API;
 //import FOPS;
 //import NOPS;

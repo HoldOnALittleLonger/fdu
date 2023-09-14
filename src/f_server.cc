@@ -3,11 +3,10 @@
 
 #include "f_server.h"
 
-const request_header &f_server::fupload::readRequest(void)
+request_header f_server::fupload::readRequest(void)
 {
-  static request_header rh = {0};  //  static is not multi-thread safe
-  memset(rh.file_path, '\0', FP_LENGTH);
-  recv(_communicateSocket, &rh.fp_length, sizeof(std::size_t), 0);
+  request_header rh = {0};  //  static is not multi-thread safe
+  recv(_communicateSocket, &rh.fp_length, sizeof(rh.fp_length), 0);
   if (rh.fp_length > 0 && rh.fp_length < FP_LENGTH)
     recv(_communicateSocket, rh.file_path, rh.fp_length, 0);
   return rh;
@@ -16,7 +15,7 @@ const request_header &f_server::fupload::readRequest(void)
 responding_header f_server::fupload::checkFile(const request_header &r)
 {
   responding_header responding = {0};
-  if (r.fp_length == 0)
+  if (r.fp_length == 0 || r.fp_length >= FP_LENGTH)
     responding.state = FDU_FILE_NOEXIST;
   else {
     responding.file_length = getFileLength(r.file_path);
@@ -55,6 +54,7 @@ unsigned short f_server::fupload::sendFile(responding_header &responding, const 
   int fstream_fd(retriveFdForFstream(*f));
   getRDFileLock(fstream_fd);
   ssize_t readed(0);
+  send(_communicateSocket, &responding, sizeof(responding_header), 0);
   while ((readed = read(*f, _upload_buffer, _ub_size)) > 0)
     send(_communicateSocket, _upload_buffer, readed, 0);
   releaseFileLock(fstream_fd);

@@ -35,6 +35,7 @@ unsigned short f_client::fdownload::getFile(void)
 
   responding_header respond = {0};
   ssize_t returned = recv(_socket, &respond, sizeof(responding_header), 0);
+
   if (returned != sizeof(responding_header))
     return FDOWNLOAD_ERR_RESPOND;
 

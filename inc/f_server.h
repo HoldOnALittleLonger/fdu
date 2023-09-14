@@ -10,8 +10,10 @@
 #ifndef _F_SERVER_H_
 #define _F_SERVER_H_
 
-#include <cstddef>
+
 #include "misc.h"
+#include <cstddef>
+#include <cstring>
 
 //export 
 class f_server final : private general_api {
@@ -36,10 +38,13 @@ class f_server final : private general_api {
     ~fupload()
       {
 	releaseLink();
-	delete[] _upload_buffer;  //  if @_upload_buffer had never been allocated,then it has default value nullptr.
+	if (_upload_buffer)
+	  delete[] _upload_buffer;  //  if @_upload_buffer had never been allocated,then it has default value nullptr.
       }
 
     fupload(const fupload &robj) noexcept(false)
+      : _communicateSocket(-1), _ub_size(FDU_DEFAULT_BUFFER_SIZE),
+      _upload_buffer(nullptr)
       {
 	__doCopy(robj);
       }
@@ -53,6 +58,8 @@ class f_server final : private general_api {
       }
 
     fupload(fupload &&robj)
+      : _communicateSocket(-1), _ub_size(FDU_DEFAULT_BUFFER_SIZE),
+      _upload_buffer(nullptr)
       {
 	__doMove(std::forward<fupload &&>(robj));
       }
@@ -81,11 +88,12 @@ class f_server final : private general_api {
     {
       if (_communicateSocket < 0)
 	return;
-      shutdown(_communicateSocket, SHUT_RDWR);
+//      shutdown(_communicateSocket, SHUT_RDWR);
+      (void)close(_communicateSocket);
       _communicateSocket = -1;
     }
 
-    const request_header &readRequest(void);
+    request_header readRequest(void);
     responding_header checkFile(const request_header &);
     unsigned short sendFile(responding_header &, const request_header &);
 
@@ -116,9 +124,10 @@ class f_server final : private general_api {
       if (_communicateSocket >= 0 && _communicateSocket != robj._communicateSocket)
 	releaseLink();
       _communicateSocket = dup(robj._communicateSocket);
+
       if (_upload_buffer)
 	delete[] _upload_buffer;
-      _ub_size = robj._ub_size;
+      setUploadBufferSize(robj._ub_size);
       _upload_buffer = robj._upload_buffer;
 
       robj.releaseLink();
@@ -238,12 +247,19 @@ class f_server final : private general_api {
     _type = UNKNOWN;
   }
 
+
+  //  DISABLE COPY AND MOVE
+  f_server(const f_server &) = delete;
+  f_server(f_server &&) = delete;
+  f_server &operator=(const f_server &) = delete;
+  f_server &operator=(f_server &) = delete;
+  
+
  private:
   int _listenSocket;
   unsigned short _maximum_links;
   std::unique_ptr<generic_ipv4_tcp> _gip4tcp;
   LinkType _type;
 };
-
 
 #endif

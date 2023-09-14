@@ -258,8 +258,7 @@ Feature design:
      
      server address : 0.0.0.0
      server port : 58892
-     directory : ./
-     
+     directory : .
 
 Develop environment:
     g++ 10.3.0
@@ -267,11 +266,17 @@ Develop environment:
     Linux 3.10
 
 Debug or Other:
-	TODO:
-	<Debug and TODO.All programs are not probably no bugs.And they are also have the space to optimize.>
+    all fixs is listed in git log.
+    TODO :
+      optimization.
+      construct namespace for components. (i tried C++20 module,but my compiler is not support to,so i put all components in
+      			      		   global namespace.)
+      add server log message facility. (currently,all message is output to stderr,for accomplish this feature,use a shell 
+      	  	     	     	        script could perfectly implement it.)
 
 Complement:
-	<There could place some messages as additional.Addition could explain the project in the further gradation.>
+    for get usage,just run fdu as well.
+    if the file has been existed,then download will failed,you have to delete it automatically before try again.
 
 Version:
-	<Version of it>
+    v0.1
