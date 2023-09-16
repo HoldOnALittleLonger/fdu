@@ -107,6 +107,7 @@ class f_client final : private general_api {
       _db_size = n;
     }
 
+    //  client program should not override the file it has been exist.
     bool checkFileIsExisted(void)
     {
       return getFileLength(*_dentry) != 0;

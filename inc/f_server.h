@@ -38,8 +38,7 @@ class f_server final : private general_api {
     ~fupload()
       {
 	releaseLink();
-	if (_upload_buffer)
-	  delete[] _upload_buffer;  //  if @_upload_buffer had never been allocated,then it has default value nullptr.
+	delete[] _upload_buffer;  //  if @_upload_buffer had never been allocated,then it has default value nullptr.
       }
 
     fupload(const fupload &robj) noexcept(false)
@@ -49,6 +48,7 @@ class f_server final : private general_api {
 	__doCopy(robj);
       }
 
+    //  if the object had not been exist,assignment is no sense.
     fupload &operator=(const fupload &robj) noexcept(false)
       {
 	if (this == &robj)
