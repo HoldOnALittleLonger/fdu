@@ -11,7 +11,6 @@
 #include <cstring>
 #include <cstdlib>
 #include <exception>
-//#include <arpa/inet.h>
 
 enum FDU_MODE { ASSERVER, ASCLIENT, UNKNOWN_MODE };
 
@@ -106,6 +105,14 @@ int main(int argc, char *argv[])
 
 void handle_server_options(fdu_server_options &s, int argc, char **argv, const char *fmt)
 {
+  /*  server is allowed to be setup with the default values.
+   *  if prepare to assign an argument,then have to assign all.
+   *  the total number of arguments is 3,and insist appear order.
+   *  otherwise,program will bug.
+   */
+  if (argc > 1 && argc < 6)
+    general_option_exception_handler_abort(LACK_NECESSARY_OPTION);
+
   s.s_listen_address_ = decltype(s.s_listen_address_){"0.0.0.0"};
   s.s_listen_port_ = 58892u;
   s.s_maximum_links_ = 3;
@@ -122,8 +129,17 @@ void handle_server_options(fdu_server_options &s, int argc, char **argv, const c
 
 void handle_client_options(fdu_client_options &c, int argc, char **argv, const char *fmt)
 {
-  #define INVALID_FILE_PATH  "/dev/null"
+  /*  client must be given all informations about the server,the file
+   *  is going to be retrived,and the directory where to save it.
+   *  total number of these arguments is 4,insist the appear order.
+   *  otherwise,program will bug.
+   */
+  if (argc < 8)
+    general_option_exception_handler_abort(LACK_NECESSARY_OPTION);
+
+  #define INVALID_FILE_PATH  "unexisted_entity"
   #define DEFAULT_DIRECTORY  "."
+
   c.c_server_address_ = decltype(c.c_server_address_){"0.0.0.0"};
   c.c_server_port_ = 58892u;
   c.c_filepath_ = decltype(c.c_filepath_){INVALID_FILE_PATH};

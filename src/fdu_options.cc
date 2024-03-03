@@ -13,9 +13,8 @@ void handle_options(int argc, char **argv, const char *fmt, ...) noexcept(false)
   va_start(ap, fmt);
   char opt('?');
 
-  using _Type = _TypeTag_CompileTime::tag_owner;
-  using lvalue_traits = option_type_mapping<_Type*>;
-  using rvalue_traits = option_type_mapping<_Type>;
+  using lvalue_traits = option_type_mapping<get_traits_by_Tag<_TypeTag_CompileTime *>>;
+  using rvalue_traits = option_type_mapping<get_traits_by_Tag<_TypeTag_CompileTime>>;
 
   while ((opt = getopt(argc, argv, fmt)) != -1)
     {

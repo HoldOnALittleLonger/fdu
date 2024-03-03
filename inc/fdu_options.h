@@ -4,14 +4,9 @@
 #include <string>
 #include <iostream>
 
-struct fdu_server_options;
-struct fdu_client_options;
-
-struct server_options_tag {
-  typedef fdu_server_options tag_owner;
-};
-struct client_options_tag {
-  typedef fdu_client_options tag_owner;
+template<class _Owner>
+struct options_tag {
+  typedef _Owner tag_owner;
 };
 
 struct general_option_types {
@@ -41,12 +36,18 @@ struct option_type_traits<_Tp *> {
 
 template<class _Tp>
 struct option_type_traits<const _Tp *> {
-  typedef const typename _Tp::option_category option_category_const_pointer;
+  typedef typename _Tp::option_category option_category_const_pointer;
   typedef const typename _Tp::context_type* context_type;
   typedef const typename _Tp::unsigned_type* unsigned_type;
   typedef const typename _Tp::signed_type* signed_type;
   typedef const typename _Tp::floating_type* floating_type;
 };
+
+struct fdu_server_options;
+struct fdu_client_options;
+
+typedef options_tag<fdu_server_options> server_options_tag;
+typedef options_tag<fdu_client_options> client_options_tag;
 
 struct fdu_server_options {
   using option_category = server_options_tag;
@@ -92,20 +93,14 @@ struct fdu_client_options {
   }
 };
 
-template<typename _Tp>
+template<typename _Traits>
 struct option_type_mapping {
-  using option_traits = option_type_traits<_Tp>;
-  using a_type = option_traits::context_type;
-  using p_type = option_traits::unsigned_type;
-  using l_type = option_traits::unsigned_type;
-  using s_type = option_traits::context_type;
-  using f_type = option_traits::context_type;
-  using d_type = option_traits::context_type;
-};
-
-enum OPTION_EXCEPTIONS {
-  UNKNOWN_OPTION,
-  LACK_NECESSARY_OPTION
+  using a_type = _Traits::context_type;
+  using p_type = _Traits::unsigned_type;
+  using l_type = _Traits::unsigned_type;
+  using s_type = _Traits::context_type;
+  using f_type = _Traits::context_type;
+  using d_type = _Traits::context_type;
 };
 
 template<typename _Tag>
@@ -116,6 +111,11 @@ struct get_traits_by_Tag<_Tag *> : public option_type_traits<typename _Tag::tag_
 
 template<typename _Tag>
 struct get_traits_by_Tag<const _Tag *> : public option_type_traits<const typename _Tag::tag_owner *> {};
+
+enum OPTION_EXCEPTIONS {
+  UNKNOWN_OPTION,
+  LACK_NECESSARY_OPTION
+};
 
 template<typename _TypeTag_CompileTime>
 void handle_options(int argc, char **argv, const char *fmt, ...);
