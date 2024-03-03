@@ -7,10 +7,11 @@
 //import <exception>;
 
 #include "fdu_cs.h"
+#include "fdu_options.h"
 #include <cstring>
 #include <cstdlib>
 #include <exception>
-#include <arpa/inet.h>
+//#include <arpa/inet.h>
 
 enum FDU_MODE { ASSERVER, ASCLIENT, UNKNOWN_MODE };
 
@@ -31,42 +32,11 @@ static FDU_MODE which_mode_now(char **argv, unsigned int n)
     return UNKNOWN_MODE;
 }
 
-struct fdu_server_options {
-  std::string s_listen_address;
-  unsigned long s_listen_port;
-  unsigned short s_maximum_links;
-  void outputInfo(void)
-  {
-    std::cerr<<"address : "<<s_listen_address<<std::endl;
-    std::cerr<<"port : "<<s_listen_port<<std::endl;
-    std::cerr<<"maximum links : "<<s_maximum_links<<std::endl;
-  }
-};
-
-struct fdu_client_options {
-  std::string c_server_address;
-  unsigned long c_server_port;
-  std::string c_filepath;
-  std::string c_directory;
-  void outputInfo(void)
-  {
-    std::cerr<<"address : "<<c_server_address<<std::endl;
-    std::cerr<<"port : "<<c_server_port<<std::endl;
-    std::cerr<<"file : "<<c_filepath<<std::endl;
-    std::cerr<<"directory : "<<c_directory<<std::endl;
-  }
-};
-
-enum OPTION_EXCEPTIONS {
-  UNKNOWN_OPTION,
-  LACK_NECESSARY_OPTION
-};
-
-struct fdu_server_options retriveServerOptions(char **argv, unsigned int n) noexcept(false);
-struct fdu_client_options retriveClientOptions(char **argv, unsigned int n) noexcept(false);
+void handle_server_options(fdu_server_options &s, int argc, char **argv, const char *fmt);
+void handle_client_options(fdu_client_options &c, int argc, char **argv, const char *fmt);
 
 static inline
-void general_option_exception_handler_abort(OPTION_EXCEPTIONS &x)
+void general_option_exception_handler_abort(const OPTION_EXCEPTIONS &x)
 {
   switch (x) {
   case UNKNOWN_OPTION:
@@ -100,14 +70,12 @@ int main(int argc, char *argv[])
   case ASSERVER:
     {
     fdu_server_options s_options;
-    try {
-      s_options = retriveServerOptions(argv + 1, argc - 1);
-    } catch (OPTION_EXCEPTIONS &x) {
-      general_option_exception_handler_abort(x);
-    }
-    if (fdu_server(s_options.s_listen_address, s_options.s_listen_port, s_options.s_maximum_links) < 0) {
+    handle_server_options(s_options, argc - 1, argv + 1, "a:p:l:");
+
+    if (fdu_server(s_options.s_listen_address_,
+                   s_options.s_listen_port_, s_options.s_maximum_links_) < 0) {
       std::cerr<<"Exception occurred when executing server routine!!"<<std::endl;
-      s_options.outputInfo();
+      std::cout<<s_options;
       return -1;
     }
     }
@@ -115,19 +83,14 @@ int main(int argc, char *argv[])
   case ASCLIENT:
     {
     fdu_client_options c_options;
-    try {
-      c_options = retriveClientOptions(argv + 1, argc - 1);
-    } catch (OPTION_EXCEPTIONS &x) {
-      general_option_exception_handler_abort(x);
+    handle_client_options(c_options, argc - 1, argv + 1, "s:p:f:d:");
+    
+    if (fdu_client(c_options.c_filepath_, c_options.c_directory_,
+                   c_options.c_server_address_, c_options.c_server_port_) < 0) {
+      std::cerr<<"Exception occurred when executing client routine!!"<<std::endl;
+      std::cout<<c_options;
+      return -1;
     }
-    if (fdu_client(c_options.c_filepath, c_options.c_directory,
-		   c_options.c_server_address, c_options.c_server_port) < 0
-	)
-      {
-	std::cerr<<"Exception occurred when executing client routine!!"<<std::endl;
-	c_options.outputInfo();
-	return -1;
-      }
     }
     break;
   default:
@@ -141,65 +104,42 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-struct fdu_server_options retriveServerOptions(char **argv, unsigned int n) noexcept(false)
+void handle_server_options(fdu_server_options &s, int argc, char **argv, const char *fmt)
 {
-  fdu_server_options options = {
-    .s_listen_address = "0.0.0.0",
-    .s_listen_port = 58892u,
-    .s_maximum_links = 3
-  };
-  char opt('?');
-  while ((opt = getopt(n, argv, "a:p:l:")) != -1) {
-    switch (opt) {
-    case 'a':
-      options.s_listen_address = decltype(options.s_listen_address){optarg};
-      break;
-    case 'p':
-      options.s_listen_port = strtoul(optarg, nullptr, 10u);
-      break;
-    case 'l':
-      options.s_maximum_links = strtoul(optarg, nullptr, 10u);
-      break;
-    default:
-      throw UNKNOWN_OPTION;
-    }
+  s.s_listen_address_ = decltype(s.s_listen_address_){"0.0.0.0"};
+  s.s_listen_port_ = 58892u;
+  s.s_maximum_links_ = 3;
+
+  try {
+    handle_options<server_options_tag>(argc, argv, fmt,
+                                       &s.s_listen_address_,
+                                       &s.s_listen_port_,
+                                       &s.s_maximum_links_);
+  } catch (OPTION_EXCEPTIONS &e) {
+    general_option_exception_handler_abort(e);
   }
-  
-  return options;
 }
 
-struct fdu_client_options retriveClientOptions(char **argv, unsigned int n) noexcept(false)
+void handle_client_options(fdu_client_options &c, int argc, char **argv, const char *fmt)
 {
-  fdu_client_options options = {
-    .c_server_address = "0.0.0.0",
-    .c_server_port = 58892u,
-    .c_directory = "."
-  };
+  #define INVALID_FILE_PATH  "/dev/null"
+  #define DEFAULT_DIRECTORY  "."
+  c.c_server_address_ = decltype(c.c_server_address_){"0.0.0.0"};
+  c.c_server_port_ = 58892u;
+  c.c_filepath_ = decltype(c.c_filepath_){INVALID_FILE_PATH};
+  c.c_directory_ = decltype(c.c_directory_){DEFAULT_DIRECTORY};
 
-  uint8_t necessary_isgiven(0);
-  char opt('?');
-  while ((opt = getopt(n, argv, "s:p:f:d:")) != -1) {
-    switch (opt) {
-    case 's':
-      options.c_server_address = decltype(options.c_server_address){optarg};
-      break;
-    case 'p':
-      options.c_server_port = strtoul(optarg, nullptr, 10u);
-      break;
-    case 'f':
-      options.c_filepath = decltype(options.c_filepath){optarg};
-      necessary_isgiven = 1;
-      break;
-    case 'd':
-      options.c_directory = decltype(options.c_directory){optarg};
-      break;
-    default:
-      throw UNKNOWN_OPTION;
-    }
+  try {
+    handle_options<client_options_tag>(argc, argv, fmt,
+                                       &c.c_server_address_,
+                                       &c.c_server_port_,
+                                       &c.c_filepath_,
+                                       &c.c_directory_);
+  } catch (OPTION_EXCEPTIONS &e) {
+    general_option_exception_handler_abort(e);
   }
 
-  if (!necessary_isgiven)
-    throw LACK_NECESSARY_OPTION;
-
-  return options;
+  #undef DEFAULT_DIRECTORY
+  #undef INVALID_FILE_PATH
 }
+
