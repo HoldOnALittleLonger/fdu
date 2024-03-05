@@ -3,12 +3,22 @@
 #include <cstddef>
 #include <string>
 #include <iostream>
+#include <vector>
+#include <utility>
 
+/*  struct options_tag - tag used to identify category.
+ *  @typedef:
+ *    tag_owner:         _Owner
+ *                       the information about tag owner.
+ */
 template<class _Owner>
 struct options_tag {
   typedef _Owner tag_owner;
 };
 
+/*  struct general_option_type - the general types program will
+ *                               accept.
+ */
 struct general_option_types {
   using context_type = std::string;
   using unsigned_type = unsigned int;
@@ -16,6 +26,9 @@ struct general_option_types {
   using floating_type = float;
 };
 
+/*  type traits for options that
+ *  server and client will receive.
+ */
 template<class _Tp>
 struct option_type_traits {
   typedef typename _Tp::option_category option_category;
@@ -25,6 +38,7 @@ struct option_type_traits {
   typedef typename _Tp::floating_type floating_type;
 };
 
+/*  for pointer  */
 template<class _Tp>
 struct option_type_traits<_Tp *> {
   typedef typename _Tp::option_category option_category_pointer;
@@ -34,6 +48,7 @@ struct option_type_traits<_Tp *> {
   typedef typename _Tp::floating_type* floating_type;
 };
 
+/*  for const pointer  */
 template<class _Tp>
 struct option_type_traits<const _Tp *> {
   typedef typename _Tp::option_category option_category_const_pointer;
@@ -49,6 +64,7 @@ struct fdu_client_options;
 typedef options_tag<fdu_server_options> server_options_tag;
 typedef options_tag<fdu_client_options> client_options_tag;
 
+/*  struct fdu_server_options - server option.  */
 struct fdu_server_options {
   using option_category = server_options_tag;
   using context_type = general_option_types::context_type;
@@ -70,6 +86,7 @@ struct fdu_server_options {
   }
 };
 
+/*  struct fdu_client_options - client option.  */
 struct fdu_client_options {
   using option_category = client_options_tag;
   using context_type = general_option_types::context_type;
@@ -93,6 +110,7 @@ struct fdu_client_options {
   }
 };
 
+/*  struct option_type_mapping - map _Traits to option types.  */
 template<typename _Traits>
 struct option_type_mapping {
   using a_type = _Traits::context_type;
@@ -103,6 +121,7 @@ struct option_type_mapping {
   using d_type = _Traits::context_type;
 };
 
+/*  templates used by compiler  */
 template<typename _Tag>
 struct get_traits_by_Tag : public option_type_traits<typename _Tag::tag_owner> {};
 
@@ -117,8 +136,11 @@ enum OPTION_EXCEPTIONS {
   LACK_NECESSARY_OPTION
 };
 
+using loc_ret_type = void *;
+using list_op_callback = loc_ret_type (*)(const opt_arg_list *, char);  /*  callback function  */
+
 template<typename _TypeTag_CompileTime>
-void handle_options(int argc, char **argv, const char *fmt, ...);
+void handle_options(int argc, char **argv, const char *fmt, opt_arg_list *list, list_op_callback callback);
 
 #include "../src/fdu_options.cc"
 

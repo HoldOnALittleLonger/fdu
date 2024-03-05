@@ -7,10 +7,22 @@
 //import <exception>;
 
 #include "fdu_cs.h"
-#include "fdu_options.h"
+
 #include <cstring>
 #include <cstdlib>
 #include <exception>
+
+using opt_type = char;
+using opt_out_type = void *;
+
+/*  typedef opt_arg_list - vector as the container of <option-argument> key-value
+ *                         pair.
+ *                         the pair represents the relationship between options and
+ *                         arguments.
+ */
+using opt_arg_list = std::vector<std::pair<opt_type, opt_out_type>>;
+
+#include "fdu_options.h"
 
 enum FDU_MODE { ASSERVER, ASCLIENT, UNKNOWN_MODE };
 
@@ -103,25 +115,40 @@ int main(int argc, char *argv[])
   return 0;
 }
 
+/*  handle_options_callback - callback function,just a search routine running with
+ *                            O(N).
+ */
+static loc_ret_type handle_options_callback(const opt_arg_list *the_list, char c)
+{
+  loc_ret_type v(0);
+  for (auto i : *the_list) {
+    if (i.first == c) {
+      v = i.second;
+      break;
+    }
+  }
+  return v;
+}
+
 void handle_server_options(fdu_server_options &s, int argc, char **argv, const char *fmt)
 {
-  /*  server is allowed to be setup with the default values.
-   *  if prepare to assign an argument,then have to assign all.
-   *  the total number of arguments is 3,and insist appear order.
-   *  otherwise,program will bug.
-   */
-  if (argc > 1 && argc < 6)
-    general_option_exception_handler_abort(LACK_NECESSARY_OPTION);
-
   s.s_listen_address_ = decltype(s.s_listen_address_){"0.0.0.0"};
   s.s_listen_port_ = 58892u;
   s.s_maximum_links_ = 3;
 
+  opt_arg_list the_list;
+  the_list.push_back(std::make_pair<opt_type, opt_out_type>('a',
+    static_cast<opt_out_type>(&s.s_listen_address_)));
+  the_list.push_back(std::make_pair<opt_type, opt_out_type>('p',
+    static_cast<opt_out_type>(&s.s_listen_port_)));
+  the_list.push_back(std::make_pair<opt_type, opt_out_type>('l',
+    static_cast<opt_out_type>(&s.s_maximum_links_)));
+
   try {
-    handle_options<server_options_tag>(argc, argv, fmt,
-                                       &s.s_listen_address_,
-                                       &s.s_listen_port_,
-                                       &s.s_maximum_links_);
+    handle_options<server_options_tag>(argc, argv,
+                                       fmt,
+                                       &the_list,
+                                       handle_options_callback);
   } catch (OPTION_EXCEPTIONS &e) {
     general_option_exception_handler_abort(e);
   }
@@ -129,31 +156,35 @@ void handle_server_options(fdu_server_options &s, int argc, char **argv, const c
 
 void handle_client_options(fdu_client_options &c, int argc, char **argv, const char *fmt)
 {
-  /*  client must be given all informations about the server,the file
-   *  is going to be retrived,and the directory where to save it.
-   *  total number of these arguments is 4,insist the appear order.
-   *  otherwise,program will bug.
-   */
-  if (argc < 8)
-    general_option_exception_handler_abort(LACK_NECESSARY_OPTION);
-
-  #define INVALID_FILE_PATH  "unexisted_entity"
+  #define INVALID_FILE_PATH  "/dev/zero"
   #define DEFAULT_DIRECTORY  "."
 
   c.c_server_address_ = decltype(c.c_server_address_){"0.0.0.0"};
   c.c_server_port_ = 58892u;
   c.c_filepath_ = decltype(c.c_filepath_){INVALID_FILE_PATH};
   c.c_directory_ = decltype(c.c_directory_){DEFAULT_DIRECTORY};
+  
+  opt_arg_list the_list;
+  the_list.push_back(std::make_pair<opt_type, opt_out_type>('s',
+    static_cast<opt_out_type>(&c.c_server_address_)));
+  the_list.push_back(std::make_pair<opt_type, opt_out_type>('p',
+    static_cast<opt_out_type>(&c.c_server_port_)));
+  the_list.push_back(std::make_pair<opt_type, opt_out_type>('f',
+    static_cast<opt_out_type>(&c.c_filepath_)));
+  the_list.push_back(std::make_pair<opt_type, opt_out_type>('d',
+    static_cast<opt_out_type>(&c.c_directory_)));
 
   try {
-    handle_options<client_options_tag>(argc, argv, fmt,
-                                       &c.c_server_address_,
-                                       &c.c_server_port_,
-                                       &c.c_filepath_,
-                                       &c.c_directory_);
+    handle_options<client_options_tag>(argc, argv,
+                                       fmt,
+                                       &the_list,
+                                       handle_options_callback);
   } catch (OPTION_EXCEPTIONS &e) {
     general_option_exception_handler_abort(e);
   }
+
+  if (c.c_filepath_ == INVALID_FILE_PATH)
+    general_option_exception_handler_abort(LACK_NECESSARY_OPTION);
 
   #undef DEFAULT_DIRECTORY
   #undef INVALID_FILE_PATH
